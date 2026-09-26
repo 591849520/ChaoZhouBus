@@ -7,6 +7,7 @@ import {
   OrderStatus,
   PassengerItem,
   RefundRulesConfig,
+  RollCallPassengerItem,
   ScheduleSeatMapData,
   ScheduleStatus,
   SeatStatus,
@@ -82,6 +83,55 @@ export interface ApplyRefundResult {
   releasedSeatNumbers: string[]
 }
 
+export interface CheckInSeatInput {
+  scheduleId: number
+  /** 按座位号手动点名（与 checkInCode 二选一） */
+  seatNumber?: string
+  /** 扫乘客电子乘车凭单二维码/核验码（与 seatNumber 二选一） */
+  checkInCode?: string
+  /** 显式设置签到状态（true: 已上车, false: 撤销为未到；若不传则自动设为 true） */
+  checkedIn?: boolean
+  nowMs?: number
+}
+
+export interface CheckInSeatResult {
+  scheduleId: number
+  seatNumber: string
+  name: string
+  phone: string
+  pickupStation: string
+  dropoffStation: string
+  checkedIn: boolean
+  checkedInAt: number | null
+  checkInCode: string
+}
+
+export interface OrderDetailView {
+  id: string
+  schedule_id: number
+  route_name: string
+  departure_time: number
+  openid: string
+  pickup_station: string
+  dropoff_station: string
+  total_amount: number
+  refund_amount: number
+  refund_fee: number
+  status: OrderStatus
+  locked_until: number
+  remaining_pay_seconds: number
+  paid_at: number | null
+  refunded_at: number | null
+  created_at: number
+  passengers: Array<{
+    seat_number: string
+    name: string
+    phone: string
+    check_in_code: string | null
+    checked_in_at: number | null
+  }>
+}
+
 interface ScheduleRow {
   id: number
   route_name: string
@@ -93,6 +143,7 @@ interface ScheduleRow {
   dropoff_stations: string
   refund_rules: string
   status: number
+  created_at: number
 }
 
 interface SeatRow {
@@ -103,6 +154,8 @@ interface SeatRow {
   locked_by_openid: string | null
   locked_until: number | null
   order_id: string | null
+  checked_in_at: number | null
+  check_in_code: string | null
 }
 
 interface OrderRow {
@@ -142,7 +195,7 @@ export class SeatLockService {
   }
 
   /**
-   * 惰性清理指定班次下已过期的锁座与超时订单（须在事务内或读取前同步调用）
+   * 惰性清理指定班次下已过期的锁座与超时订单
    */
   public releaseExpiredLocks(scheduleId: number, nowMs: number): number {
     const cleanTx = this.db.transaction((sid: number, currentMs: number): number => {
@@ -156,7 +209,8 @@ export class SeatLockService {
       const seatRes = this.db
         .prepare<[number, number]>(
           `UPDATE schedule_seats
-           SET status = 0, locked_by_openid = NULL, locked_until = NULL, order_id = NULL
+           SET status = 0, locked_by_openid = NULL, locked_until = NULL, order_id = NULL,
+               checked_in_at = NULL, check_in_code = NULL
            WHERE schedule_id = ? AND status = 1 AND locked_until IS NOT NULL AND locked_until <= ?`,
         )
         .run(sid, currentMs)
@@ -232,6 +286,59 @@ export class SeatLockService {
   }
 
   /**
+   * 获取全部班次列表及实时余票统计
+   */
+  public listSchedules(nowMs = Date.now()): Array<{
+    id: number
+    route_name: string
+    departure_time: number
+    open_booking_time: number
+    price_in_cents: number
+    total_seats: number
+    available_seats: number
+    sold_seats: number
+    locked_seats: number
+    reserved_seats: number
+    pickup_stations: string[]
+    dropoff_stations: string[]
+    status: ScheduleStatus
+    server_time_ms: number
+  }> {
+    const schedules = this.db
+      .prepare<[], ScheduleRow>(`SELECT * FROM schedules ORDER BY departure_time ASC`)
+      .all()
+
+    return schedules.map((s) => {
+      this.releaseExpiredLocks(s.id, nowMs)
+      const seats = this.db
+        .prepare<[number], SeatRow>(`SELECT status FROM schedule_seats WHERE schedule_id = ?`)
+        .all(s.id)
+
+      const availableSeats = seats.filter((x) => x.status === SeatStatus.AVAILABLE).length
+      const soldSeats = seats.filter((x) => x.status === SeatStatus.SOLD).length
+      const lockedSeats = seats.filter((x) => x.status === SeatStatus.LOCKED).length
+      const reservedSeats = seats.filter((x) => x.status === SeatStatus.RESERVED).length
+
+      return {
+        id: s.id,
+        route_name: s.route_name,
+        departure_time: s.departure_time,
+        open_booking_time: s.open_booking_time,
+        price_in_cents: s.price_in_cents,
+        total_seats: s.total_seats,
+        available_seats: availableSeats,
+        sold_seats: soldSeats,
+        locked_seats: lockedSeats,
+        reserved_seats: reservedSeats,
+        pickup_stations: JSON.parse(s.pickup_stations) as string[],
+        dropoff_stations: JSON.parse(s.dropoff_stations) as string[],
+        status: s.status as ScheduleStatus,
+        server_time_ms: nowMs,
+      }
+    })
+  }
+
+  /**
    * 获取班次 53 座实时座位图（自动执行 300s 惰性过期映射）
    */
   public getSeatMap(scheduleId: number, nowMs = Date.now()): ScheduleSeatMapData {
@@ -257,6 +364,7 @@ export class SeatLockService {
       locked_by_openid: row.locked_by_openid,
       locked_until: row.locked_until,
       order_id: row.order_id,
+      checked_in_at: row.checked_in_at,
     }))
 
     return {
@@ -277,8 +385,6 @@ export class SeatLockService {
 
   /**
    * 核心：50 并发原子排他锁座与创建待付订单
-   * 在单个 SQLite BEGIN IMMEDIATE 同步事务内完成：
-   * 1. 惰性释放超时锁 -> 2. 班次与站点校验 -> 3. 单人2座配额校验 -> 4. 多座全空闲预检 -> 5. 锁座与建单
    */
   public lockSeatsAndCreateOrder(input: LockSeatsInput): LockSeatsResult {
     const nowMs = input.nowMs ?? Date.now()
@@ -297,10 +403,8 @@ export class SeatLockService {
     }
 
     const tx = this.db.transaction((): LockSeatsResult => {
-      // Step 1: 先清理该班次所有已过期的锁座（惰性释放）
       this.releaseExpiredLocks(input.scheduleId, nowMs)
 
-      // Step 2: 校验班次与开票时间、上下车站点
       const schedule = this.db
         .prepare<[number], ScheduleRow>(`SELECT * FROM schedules WHERE id = ?`)
         .get(input.scheduleId)
@@ -319,7 +423,6 @@ export class SeatLockService {
         throw new BusDomainError('INVALID_STATION', '所选上车点或下车点不属于当前班次')
       }
 
-      // Step 3: 校验用户在该班次的有效占用座位数（锁定中 + 已购买）
       const quotaRow = this.db
         .prepare<[number, string, number], { cnt: number }>(
           `SELECT COUNT(*) AS cnt FROM schedule_seats
@@ -337,7 +440,6 @@ export class SeatLockService {
         )
       }
 
-      // Step 4: 预检全部所选座位是否均处于 AVAILABLE (0) 状态（任一冲突整单抛错回滚）
       const seatSelectStmt = this.db.prepare<[number, string], SeatRow>(
         `SELECT * FROM schedule_seats WHERE schedule_id = ? AND seat_number = ?`,
       )
@@ -355,12 +457,11 @@ export class SeatLockService {
         }
       }
 
-      // Step 5: 原子锁定全部所选座位并生成待支付订单（300s 双超时严格对齐）
       const lockedUntilMs = nowMs + this.lockTtlMs
       const orderId = `ORD${nowMs}${crypto.randomBytes(3).toString('hex').toUpperCase()}`
       const totalAmountCents = schedule.price_in_cents * seatNumbers.length
 
-      const updateSeatStmt = this.db.prepare<[ string, number, string, number, string ]>(
+      const updateSeatStmt = this.db.prepare<[string, number, string, number, string]>(
         `UPDATE schedule_seats
          SET status = 1, locked_by_openid = ?, locked_until = ?, order_id = ?
          WHERE schedule_id = ? AND seat_number = ? AND status = 0`,
@@ -424,7 +525,7 @@ export class SeatLockService {
   }
 
   /**
-   * 微信支付异步回调 Webhook 处理（含幂等防护 + 迟到支付卡单自动原路退款防超卖）
+   * 微信支付异步回调 Webhook 处理（自动生成每个座位的 6 位电子检票码 check_in_code）
    */
   public confirmPaymentWebhook(input: ConfirmPaymentInput): ConfirmPaymentResult {
     const nowMs = input.nowMs ?? Date.now()
@@ -438,7 +539,6 @@ export class SeatLockService {
         throw new BusDomainError('ORDER_NOT_FOUND', `订单 ${input.orderId} 不存在`, 404)
       }
 
-      // 幂等检查：已出票或已转入迟到自动退款状态，直接返回成功
       if (order.status === OrderStatus.PAID || order.status === OrderStatus.EXPIRED_REFUNDING) {
         return {
           orderId: order.id,
@@ -453,7 +553,6 @@ export class SeatLockService {
         `SELECT * FROM schedule_seats WHERE schedule_id = ? AND seat_number = ?`,
       )
 
-      // 检查是否存在“锁超时后被其他同学抢走”的卡单竞态冲突
       let hasSeatConflict = false
       for (const p of passengers) {
         const seat = seatSelectStmt.get(order.schedule_id, p.seat_number)
@@ -475,7 +574,6 @@ export class SeatLockService {
       }
 
       if (hasSeatConflict) {
-        // 触发迟到支付防超卖保护：绝不覆盖新买家的座位，将该单置为 EXPIRED_REFUNDING 并全额原路退款
         const refundId = `AUTO_REF_${order.id}`
         this.db
           .prepare(
@@ -485,11 +583,11 @@ export class SeatLockService {
           )
           .run(OrderStatus.EXPIRED_REFUNDING, input.transactionId, refundId, nowMs, order.id)
 
-        // 若还有残留的部分本单锁，顺手释放
         this.db
           .prepare(
             `UPDATE schedule_seats
-             SET status = 0, locked_by_openid = NULL, locked_until = NULL, order_id = NULL
+             SET status = 0, locked_by_openid = NULL, locked_until = NULL, order_id = NULL,
+                 checked_in_at = NULL, check_in_code = NULL
              WHERE schedule_id = ? AND order_id = ?`,
           )
           .run(order.schedule_id, order.id)
@@ -502,15 +600,19 @@ export class SeatLockService {
         }
       }
 
-      // 正常出票：将座位更新为 SOLD (2)，订单更新为 PAID (1)
+      // 正常出票：将座位更新为 SOLD (2)，生成 6 位数字检票码 check_in_code
       const markSoldStmt = this.db.prepare(
         `UPDATE schedule_seats
-         SET status = 2, locked_by_openid = ?, locked_until = NULL, order_id = ?
+         SET status = 2, locked_by_openid = ?, locked_until = NULL, order_id = ?,
+             checked_in_at = NULL, check_in_code = ?
          WHERE schedule_id = ? AND seat_number = ?`,
       )
 
       for (const p of passengers) {
-        markSoldStmt.run(order.openid, order.id, order.schedule_id, p.seat_number)
+        // 生成含座位号特征的唯一 6 位数字检票码，例如 "03" + 4位随机数字 -> "038492"
+        const randomFour = String(crypto.randomInt(1000, 9999))
+        const checkInCode = `${p.seat_number}${randomFour}`
+        markSoldStmt.run(order.openid, order.id, checkInCode, order.schedule_id, p.seat_number)
       }
 
       this.db
@@ -533,11 +635,249 @@ export class SeatLockService {
   }
 
   /**
-   * 阶梯退票与席位自愈（Tiered Refund & Seat Self-Healing）
-   * - 距发车 >= 48h：扣 5% 手续费
-   * - 24h <= 距发车 < 48h：扣 20% 违约金
-   * - 距发车 < 24h：抛出 REFUND_WINDOW_CLOSED 拦截
-   * - 退款成功后同一事务将座位重置为 0 (AVAILABLE)，自动归还用户购票配额
+   * 手机端现场点名签到 / 扫电子凭单码核销
+   * 支持：
+   * 1. 领队在名单点击某座位签到或撤销（传 scheduleId + seatNumber + checkedIn）
+   * 2. 领队用微信扫一扫识别乘客 6 位检票码或二维码内容（传 scheduleId + checkInCode）
+   */
+  public checkInSeat(input: CheckInSeatInput): CheckInSeatResult {
+    const nowMs = input.nowMs ?? Date.now()
+
+    const tx = this.db.transaction((): CheckInSeatResult => {
+      let seat: SeatRow | undefined
+
+      if (input.checkInCode) {
+        // 支持扫码内容形如 "CZBUS:1:038492" 或纯 6 位码 "038492"
+        const rawCode = input.checkInCode.includes(':')
+          ? input.checkInCode.split(':').pop()!.trim()
+          : input.checkInCode.trim()
+
+        seat = this.db
+          .prepare<[number, string], SeatRow>(
+            `SELECT * FROM schedule_seats WHERE schedule_id = ? AND check_in_code = ?`,
+          )
+          .get(input.scheduleId, rawCode)
+      } else if (input.seatNumber) {
+        seat = this.db
+          .prepare<[number, string], SeatRow>(
+            `SELECT * FROM schedule_seats WHERE schedule_id = ? AND seat_number = ?`,
+          )
+          .get(input.scheduleId, input.seatNumber)
+      }
+
+      if (!seat || seat.status !== SeatStatus.SOLD || !seat.order_id) {
+        throw new BusDomainError(
+          'CHECK_IN_INVALID',
+          '未找到对应的已售出有效座位或核验码无效',
+          400,
+        )
+      }
+
+      const order = this.db
+        .prepare<[string], OrderRow>(`SELECT * FROM orders WHERE id = ?`)
+        .get(seat.order_id)
+
+      if (!order || order.status !== OrderStatus.PAID) {
+        throw new BusDomainError('CHECK_IN_INVALID', '关联订单未处于已出票有效状态', 400)
+      }
+
+      const passengers = JSON.parse(order.passenger_info) as PassengerItem[]
+      const passenger = passengers.find((p) => p.seat_number === seat.seat_number)
+      if (!passenger) {
+        throw new BusDomainError('CHECK_IN_INVALID', '未找到座位对应的乘车人记录', 400)
+      }
+
+      const targetChecked = input.checkedIn !== undefined ? input.checkedIn : true
+      const newCheckedInAt = targetChecked ? nowMs : null
+
+      this.db
+        .prepare(`UPDATE schedule_seats SET checked_in_at = ? WHERE id = ?`)
+        .run(newCheckedInAt, seat.id)
+
+      return {
+        scheduleId: input.scheduleId,
+        seatNumber: seat.seat_number,
+        name: passenger.name,
+        phone: passenger.phone,
+        pickupStation: order.pickup_station,
+        dropoffStation: order.dropoff_station,
+        checkedIn: targetChecked,
+        checkedInAt: newCheckedInAt,
+        checkInCode: seat.check_in_code ?? '',
+      }
+    })
+
+    return tx.immediate()
+  }
+
+  /**
+   * 获取指定班次的全部已售出乘客点名列表（按座位号升序）
+   */
+  public getRollCallList(scheduleId: number): RollCallPassengerItem[] {
+    const soldSeats = this.db
+      .prepare<[number], SeatRow>(
+        `SELECT * FROM schedule_seats WHERE schedule_id = ? AND status = 2 ORDER BY seat_number ASC`,
+      )
+      .all(scheduleId)
+
+    const orderStmt = this.db.prepare<[string], OrderRow>(`SELECT * FROM orders WHERE id = ?`)
+    const result: RollCallPassengerItem[] = []
+
+    for (const seat of soldSeats) {
+      if (!seat.order_id) continue
+      const order = orderStmt.get(seat.order_id)
+      if (!order || order.status !== OrderStatus.PAID) continue
+
+      const passengers = JSON.parse(order.passenger_info) as PassengerItem[]
+      const matched = passengers.find((p) => p.seat_number === seat.seat_number)
+      if (!matched) continue
+
+      result.push({
+        seat_number: seat.seat_number,
+        name: matched.name,
+        phone: matched.phone,
+        pickup_station: order.pickup_station,
+        dropoff_station: order.dropoff_station,
+        order_id: order.id,
+        check_in_code: seat.check_in_code ?? '',
+        checked_in_at: seat.checked_in_at,
+      })
+    }
+
+    return result
+  }
+
+  /**
+   * 管理员动态切换预留席位（在 0 AVAILABLE 与 3 RESERVED 之间切换）
+   */
+  public toggleReservedSeat(
+    scheduleId: number,
+    seatNumber: string,
+    reserved: boolean,
+    nowMs = Date.now(),
+  ): SeatViewItem {
+    this.releaseExpiredLocks(scheduleId, nowMs)
+
+    const tx = this.db.transaction((): SeatViewItem => {
+      const seat = this.db
+        .prepare<[number, string], SeatRow>(
+          `SELECT * FROM schedule_seats WHERE schedule_id = ? AND seat_number = ?`,
+        )
+        .get(scheduleId, seatNumber)
+
+      if (!seat) {
+        throw new BusDomainError('INVALID_SEAT_NUMBER', `座位 ${seatNumber} 不存在`, 404)
+      }
+
+      if (seat.status === SeatStatus.LOCKED || seat.status === SeatStatus.SOLD) {
+        throw new BusDomainError(
+          'SEAT_UNAVAILABLE',
+          `座位 ${seatNumber} 已被锁定或已售出，无法修改预留状态`,
+        )
+      }
+
+      const nextStatus = reserved ? SeatStatus.RESERVED : SeatStatus.AVAILABLE
+      this.db
+        .prepare(`UPDATE schedule_seats SET status = ? WHERE id = ?`)
+        .run(nextStatus, seat.id)
+
+      return {
+        seat_number: seat.seat_number,
+        status: nextStatus,
+        locked_by_openid: null,
+        locked_until: null,
+        order_id: null,
+        checked_in_at: null,
+      }
+    })
+
+    return tx.immediate()
+  }
+
+  /**
+   * 查询单个订单详情（含电子乘车凭单所需的核验码与签到状态）
+   */
+  public getOrderDetail(orderId: string, openid?: string, nowMs = Date.now()): OrderDetailView {
+    const order = this.db
+      .prepare<[string], OrderRow>(`SELECT * FROM orders WHERE id = ?`)
+      .get(orderId)
+
+    if (!order) {
+      throw new BusDomainError('ORDER_NOT_FOUND', `订单 ${orderId} 不存在`, 404)
+    }
+
+    this.releaseExpiredLocks(order.schedule_id, nowMs)
+
+    const refreshedOrder = this.db
+      .prepare<[string], OrderRow>(`SELECT * FROM orders WHERE id = ?`)
+      .get(orderId)!
+
+    if (openid && refreshedOrder.openid !== openid) {
+      throw new BusDomainError('ORDER_FORBIDDEN', '无权查看他人订单', 403)
+    }
+
+    const schedule = this.db
+      .prepare<[number], ScheduleRow>(`SELECT * FROM schedules WHERE id = ?`)
+      .get(refreshedOrder.schedule_id)!
+
+    const rawPassengers = JSON.parse(refreshedOrder.passenger_info) as PassengerItem[]
+    const seatStmt = this.db.prepare<[number, string], SeatRow>(
+      `SELECT * FROM schedule_seats WHERE schedule_id = ? AND seat_number = ?`,
+    )
+
+    const passengersWithCheckIn = rawPassengers.map((p) => {
+      const seat = seatStmt.get(refreshedOrder.schedule_id, p.seat_number)
+      const belongsToOrder = seat && seat.order_id === refreshedOrder.id
+      return {
+        seat_number: p.seat_number,
+        name: p.name,
+        phone: p.phone,
+        check_in_code: belongsToOrder ? seat.check_in_code : null,
+        checked_in_at: belongsToOrder ? seat.checked_in_at : null,
+      }
+    })
+
+    const remainingPaySeconds =
+      refreshedOrder.status === OrderStatus.PENDING_PAY
+        ? Math.max(0, Math.ceil((refreshedOrder.locked_until - nowMs) / 1000))
+        : 0
+
+    return {
+      id: refreshedOrder.id,
+      schedule_id: refreshedOrder.schedule_id,
+      route_name: schedule.route_name,
+      departure_time: schedule.departure_time,
+      openid: refreshedOrder.openid,
+      pickup_station: refreshedOrder.pickup_station,
+      dropoff_station: refreshedOrder.dropoff_station,
+      total_amount: refreshedOrder.total_amount,
+      refund_amount: refreshedOrder.refund_amount,
+      refund_fee: refreshedOrder.refund_fee,
+      status: refreshedOrder.status as OrderStatus,
+      locked_until: refreshedOrder.locked_until,
+      remaining_pay_seconds: remainingPaySeconds,
+      paid_at: refreshedOrder.paid_at,
+      refunded_at: refreshedOrder.refunded_at,
+      created_at: refreshedOrder.created_at,
+      passengers: passengersWithCheckIn,
+    }
+  }
+
+  /**
+   * 查询指定微信用户的全部订单列表
+   */
+  public getUserOrders(openid: string, nowMs = Date.now()): OrderDetailView[] {
+    const rows = this.db
+      .prepare<[string], { id: string }>(
+        `SELECT id FROM orders WHERE openid = ? ORDER BY created_at DESC`,
+      )
+      .all(openid)
+
+    return rows.map((r) => this.getOrderDetail(r.id, openid, nowMs))
+  }
+
+  /**
+   * 阶梯退票与席位自愈（重置座位为 0 AVAILABLE，清空签到态与核验码，归还用户购票配额）
    */
   public applyTieredRefund(input: ApplyRefundInput): ApplyRefundResult {
     const nowMs = input.nowMs ?? Date.now()
@@ -585,7 +925,6 @@ export class SeatLockService {
       const passengers = JSON.parse(order.passenger_info) as PassengerItem[]
       const releasedSeatNumbers = passengers.map((p) => p.seat_number)
 
-      // 1. 更新订单为 REFUNDED (2)
       this.db
         .prepare(
           `UPDATE orders
@@ -601,11 +940,11 @@ export class SeatLockService {
           order.id,
         )
 
-      // 2. 席位自愈：释放所有关联座位回 AVAILABLE (0)，清空占用人与订单关联，归还用户限购配额
       this.db
         .prepare(
           `UPDATE schedule_seats
-           SET status = 0, locked_by_openid = NULL, locked_until = NULL, order_id = NULL
+           SET status = 0, locked_by_openid = NULL, locked_until = NULL, order_id = NULL,
+               checked_in_at = NULL, check_in_code = NULL
            WHERE schedule_id = ? AND order_id = ?`,
         )
         .run(order.schedule_id, order.id)

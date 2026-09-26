@@ -11,10 +11,10 @@
 
 ### 5 大刚性交付目标
 1. **50 人瞬时并发选座零超卖**：支持定时开票，50+ 人同时抢同一座位时 100% 串行排他，零超卖、零部分锁定。
-2. **固定 53 座大巴车模与配额管控**：还原真实大巴物理排布（`01`、`02` 默认预留，对外发售 `03~53` 共 51 座），单人单班次限购 2 座（须实名绑定姓名、手机号、学号）。
+2. **固定 53 座大巴车模与配额管控**：还原真实大巴物理排布（`01`、`02` 默认预留，对外发售 `03~53` 共 51 座），单人单班次限购 2 座（仅需实名绑定姓名、手机号，零冗余输入阻力）。
 3. **多校区上车点与多下车点联动**：支持按时序选择上车校区（如：大学城校区 08:00、本部正门 08:40）与返乡下车站点（如：潮州体育馆、潮州客运总站）。
 4. **300 秒双超时对齐 + 阶梯退票席位自愈**：未支付满 300 秒自动释放座位；发车前支持按阶梯费率自动退票，退票成功后座位毫秒级变白回流售票池。
-5. **标准 A4 打印级检票名册导出**：管理员可一键导出按**上车站点分块、座位号升序**排列的 Excel 检票签到表。
+5. **手机端现场点名/扫码签到 + A4 打印级检票名册导出**：支持领队在手机端按上车校区过滤未到同学、一键拨号、点击签到或扫电子凭单码核销；支持一键导出双 Sheet Excel 检票名册（`Sheet 1 按上车站点分块表` + `Sheet 2 01~53 全车座位总表`）。
 
 ---
 
@@ -81,7 +81,6 @@ CREATE TABLE IF NOT EXISTS intentions (
   departure_campus TEXT NOT NULL,            -- 出发校区
   destination TEXT NOT NULL,                 -- 目的地/期望下车点
   travel_date TEXT NOT NULL,                 -- 期望出发日期 (YYYY-MM-DD)
-  luggage_count INTEGER NOT NULL DEFAULT 1,  -- 行李箱件数
   created_at INTEGER NOT NULL                -- 创建时间戳 (ms)
 );
 CREATE INDEX IF NOT EXISTS idx_intentions_route_date
@@ -111,6 +110,8 @@ CREATE TABLE IF NOT EXISTS schedule_seats (
   locked_by_openid TEXT DEFAULT NULL,        -- 当前锁定/购票人 OpenID
   locked_until INTEGER DEFAULT NULL,         -- 锁座过期时间戳 (ms)，用于 300s 惰性过期判定
   order_id TEXT DEFAULT NULL,                -- 关联订单号
+  checked_in_at INTEGER DEFAULT NULL,        -- 现场检票签到时间戳 (ms)，NULL表示未上车
+  check_in_code TEXT DEFAULT NULL,           -- 6位电子乘车凭单核验码（出票时生成）
   FOREIGN KEY (schedule_id) REFERENCES schedules(id) ON DELETE CASCADE,
   UNIQUE (schedule_id, seat_number)
 );
@@ -126,11 +127,11 @@ CREATE TABLE IF NOT EXISTS orders (
   dropoff_station TEXT NOT NULL,             -- 选定下车站点
   total_amount INTEGER NOT NULL,             -- 订单实付总金额 (分)
   refund_amount INTEGER NOT NULL DEFAULT 0,  -- 累计退款金额 (分)
-   refund_fee INTEGER NOT NULL DEFAULT 0,     -- 退票扣除手续费 (分)
+  refund_fee INTEGER NOT NULL DEFAULT 0,     -- 退票扣除手续费 (分)
   transaction_id TEXT DEFAULT NULL,          -- 微信支付流水号
   refund_id TEXT DEFAULT NULL,               -- 微信退款单号
-  status INTEGER NOT NULL DEFAULT 0,         -- 0:待支付, 1:已出票, 2:已退款, 3:已超时取消
-  passenger_info TEXT NOT NULL,              -- JSON: [{"seat_number":"03","name":"张三","phone":"13800000000","student_id":"2023001","luggage_count":1}]
+  status INTEGER NOT NULL DEFAULT 0,         -- 0:待支付, 1:已出票, 2:已退款, 3:已超时取消, 4:迟到自动退款中
+  passenger_info TEXT NOT NULL,              -- JSON: [{"seat_number":"03","name":"张三","phone":"13800000000"}]
   locked_until INTEGER NOT NULL,             -- 订单支付截止时间戳 (ms) = created_at + 300_000
   paid_at INTEGER DEFAULT NULL,
   refunded_at INTEGER DEFAULT NULL,
@@ -147,17 +148,18 @@ CREATE INDEX IF NOT EXISTS idx_orders_schedule_status ON orders (schedule_id, st
 
 | 序号 | 接口路径与方法 | 角色 | 核心功能说明 |
 | :--- | :--- | :---: | :--- |
-| 1 | `POST /api/v1/intentions` | 学生端 | 提交返乡乘车意向（姓名、手机、校区、目的地、期望日期、行李数） |
+| 1 | `POST /api/v1/intentions` | 学生端 | 提交返乡乘车意向（姓名、手机、出发校区、目的地、期望日期） |
 | 2 | `GET /api/v1/schedules` | 公共 | 获取班次列表及各班次余票数、服务器当前时间戳 `server_time_ms` |
-| 3 | `GET /api/v1/schedules/:id/seat-map` | 学生端 | 获取 53 座实时状态图（自动将 `status=1 AND locked_until < now` 映射为 `0 可选`） |
+| 3 | `GET /api/v1/schedules/:id/seat-map` | 学生端 | 获取 53 座实时状态图（自动将 `status=1 AND locked_until <= now` 映射为 `0 可选`） |
 | 4 | `POST /api/v1/orders/lock-and-pay` | 学生端 | **核心**：排他事务校验配额与座位 -> 锁座 300s -> 创建待付单 -> 返回微信支付参数 |
-| 5 | `POST /api/v1/pay/wx-notify` | 微信回调/沙箱 | 验签解密 -> 幂等校验 -> 校验座位归属 -> 更新订单为 `1 (已出票)`、座位为 `2 (已售出)` |
-| 6 | `GET /api/v1/orders` & `GET /api/v1/orders/:id` | 学生端 | 查询个人订单列表、电子乘车凭单详情与锁座剩余支付秒数 |
-| 7 | `POST /api/v1/orders/:id/refund` | 学生端 | 校验 `< 24h` 限制 -> 计算阶梯手续费 -> 执行退款并在同事务内重置座位为 `0`、归还配额 |
+| 5 | `POST /api/v1/pay/wx-notify` | 微信回调/沙箱 | 验签解密 -> 幂等校验 -> 校验座位归属 -> 更新订单为 `1 (已出票)`、座位为 `2 (已售出)` 并生成 6 位 `check_in_code` |
+| 6 | `GET /api/v1/orders` & `GET /api/v1/orders/:id` | 学生端 | 查询个人订单列表、电子乘车凭单详情（含座位检票码与签到状态） |
+| 7 | `POST /api/v1/orders/:id/refund` | 学生端 | 校验 `< 24h` 限制 -> 计算阶梯手续费 -> 执行退款并在同事务内重置座位为 `0`、清空签到态并归还配额 |
 | 8 | `POST /api/v1/admin/schedules` | 管理端 | 管理员创建新班次（自动生成 01~53 号座位，其中 01、02 默认设为 `3 领队预留`） |
 | 9 | `PATCH /api/v1/admin/schedules/:id/seats` | 管理端 | 管理员手动调整预留座（切换 `0 可选` 与 `3 领队预留`） |
-| 10 | `GET /api/v1/admin/schedules/:id/dashboard` | 管理端 | 实时售票大盘统计（已售、锁定中、空余、各站点上车人数汇总、意向转化率） |
-| 11 | `GET /api/v1/admin/schedules/:id/export` | 管理端 | **导出标准 A4 打印级检票名册 Excel**（按 `pickup_station` 分块，块内按 `seat_number ASC` 升序，含 `[座位号, 姓名, 手机号, 学号, 预选下车点, 行李件数, 领队核验签到栏]`） |
+| 10 | `GET /api/v1/admin/schedules/:id/dashboard` | 管理端 | 实时售票大盘与手机端现场点名列表（支持按上车校区过滤、只看未到、显示乘客手机号与签到状态） |
+| 11 | `POST /api/v1/admin/schedules/:id/check-in` | 管理端 | **手机端现场点名/扫码核销**（支持按 `seat_number` 点名切换签到态，或传入 `check_in_code` 扫码核销） |
+| 12 | `GET /api/v1/admin/schedules/:id/export` | 管理端 | **导出双 Sheet A4 检票名册 Excel**（`Sheet 1 按上车站点分块表` + `Sheet 2 01-53全车座位总表`，6 列：`[座位号, 姓名, 手机号, 上车站点, 预选下车点, 签到状态/领队核验栏]`） |
 
 ---
 

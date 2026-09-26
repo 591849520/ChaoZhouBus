@@ -40,13 +40,11 @@ export interface RefundRulesConfig {
   tier2_fee_pct: number
 }
 
-/** 乘车人实名明细 */
+/** 乘车人实名明细（已精简学号与行李数，仅保留座位号、姓名、手机号） */
 export interface PassengerItem {
   seat_number: string
   name: string
   phone: string
-  student_id: string
-  luggage_count: number
 }
 
 /** 座位图单个座位视图结构 */
@@ -56,6 +54,7 @@ export interface SeatViewItem {
   locked_by_openid: string | null
   locked_until: number | null
   order_id: string | null
+  checked_in_at: number | null
 }
 
 /** 班次详情与 53 座视图响应结构 */
@@ -74,6 +73,18 @@ export interface ScheduleSeatMapData {
   seats: SeatViewItem[]
 }
 
+/** 现场检票/点名单个席位详情 */
+export interface RollCallPassengerItem {
+  seat_number: string
+  name: string
+  phone: string
+  pickup_station: string
+  dropoff_station: string
+  order_id: string
+  check_in_code: string
+  checked_in_at: number | null
+}
+
 /** 业务异常错误码 */
 export type DomainErrorCode =
   | 'SCHEDULE_NOT_FOUND'
@@ -87,6 +98,8 @@ export type DomainErrorCode =
   | 'ORDER_FORBIDDEN'
   | 'ORDER_INVALID_STATE'
   | 'REFUND_WINDOW_CLOSED'
+  | 'CHECK_IN_INVALID'
+  | 'ADMIN_UNAUTHORIZED'
 
 /** 结构化业务错误 */
 export class BusDomainError extends Error {

@@ -9,5 +9,5 @@
 ## 2. 下一阶段开发待办
 - [x] **Phase 1**：初始化 `server/` 工程（`package.json`、`tsconfig.json`、SQLite WAL Schema 初始化与 53 座生成逻辑）
 - [x] **Phase 2**：实现核心选座排他事务服务（`SeatLockService`）及 50 并发抢座 + 300s 惰性超时释放 + 阶梯退票自愈单元测试（`83ms` 通过）
-- [ ] **Phase 3**：实现 A4 检票名册 Excel 导出服务（`exceljs`）+ 返乡意向服务 + Fastify 11 个 REST API 路由与集成测试
-- [ ] **Phase 4**：初始化 `miniprogram/` 微信小程序前端四大核心页面（53 座网格选座、本地倒计时、电子凭单、管理后台）
+- [x] **Phase 3**：实现 A4 双 Sheet 检票名册 Excel 导出服务（`exceljs`）+ 现场点名/扫码核销 + Fastify REST API 路由与集成测试（`860ms` 全通过）
+- [ ] **Phase 4**：初始化 `miniprogram/` 微信小程序前端四大核心页面（53 座网格选座、本地倒计时、电子凭单、领队手机现场点名/拨号/扫码/Excel导出后台）

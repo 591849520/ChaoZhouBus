@@ -37,3 +37,14 @@
   - 初次执行 `npm run typecheck` 检出 `seat-lock.ts(171,13)` 泛型元组参数数量不匹配（`<[string]>` -> `<[number, string, number]>`），修复后重新执行 `npm run typecheck` 退出码 `0`（零错误）。
   - 执行 `npm test`（`tsx run-all-tests.ts`）：`[✓] src/services/seat-lock.test.ts (83ms)`，覆盖 53 座初始化与预留座拦截、50 并发同抢 03 号座（1 成功 / 49 拦截）、多座部分冲突整单回滚、单人 2 座配额拦截、301 秒惰性过期重抢、微信回调幂等与迟到支付自动原路退款、阶梯退票（>=48h 5% / 24-48h 20% / <24h 拦截）及席位自愈归还配额。
 - **回退方式**：`git checkout main` 或回退 `feat/server-core` 分支提交。
+
+## 2026-09-26T16:07:00+08:00 — 完成 Phase 2 (`feat/api-and-export`) 现场点名、双 Sheet Excel 名册导出与全套 REST API
+- **触发依据**：用户确认移除 `学号` 与 `行李件数`，认可按座位独立签到 (`checked_in_at`) + 6位核验码扫码检票 (`check_in_code`) + 双 Sheet Excel 名册导出方案，并指令“开始吧”。
+- **执行动作**：
+  - 切出 `feat/api-and-export` 分支，同步更新 `REQUIREMENTS.md`、`domain.ts`、`schema.ts`、`seat-lock.ts`。
+  - 新增 `server/src/services/roster-export.ts`（基于 `exceljs` 生成 `按上车站点检票表` 与 `01-53全车座位总表` 双 Sheet 工作簿，支持手机签到状态自动回填至 Excel）及 `roster-export.test.ts`。
+  - 新增 `server/src/app.ts`（13 个完整 REST API 端点，含 `zod` 入参校验与管理员鉴权）、`server/src/index.ts` 及 `server/src/app.test.ts`。
+- **外部验证证据**：
+  - `npm run typecheck`（`tsc --noEmit`）零错误。
+  - `npm test`：`[✓] src/app.test.ts (729ms)`、`[✓] src/services/roster-export.test.ts (95ms)`、`[✓] src/services/seat-lock.test.ts (35ms)`，3 项测试套件 100% 通过（总耗时 `860ms`）。
+- **回退方式**：`git reset --hard ff60d10`。

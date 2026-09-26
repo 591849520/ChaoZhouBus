@@ -9,7 +9,7 @@ export function formatSeatNumber(num: number): string {
 
 /**
  * 初始化 SQLite 3 (WAL 模式) 数据库表结构
- * 严格遵循 REQUIREMENTS.md 第四章 DDL
+ * 严格遵循 REQUIREMENTS.md 第四章 DDL（无学号、无行李数，支持按座位独立签到与扫码核销）
  */
 export function initSchema(db: Database.Database): void {
   db.pragma('journal_mode = WAL')
@@ -26,7 +26,6 @@ export function initSchema(db: Database.Database): void {
       departure_campus TEXT NOT NULL,
       destination TEXT NOT NULL,
       travel_date TEXT NOT NULL,
-      luggage_count INTEGER NOT NULL DEFAULT 1,
       created_at INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_intentions_route_date
@@ -56,6 +55,8 @@ export function initSchema(db: Database.Database): void {
       locked_by_openid TEXT DEFAULT NULL,
       locked_until INTEGER DEFAULT NULL,
       order_id TEXT DEFAULT NULL,
+      checked_in_at INTEGER DEFAULT NULL,
+      check_in_code TEXT DEFAULT NULL,
       FOREIGN KEY (schedule_id) REFERENCES schedules(id) ON DELETE CASCADE,
       UNIQUE (schedule_id, seat_number)
     );
