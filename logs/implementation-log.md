@@ -27,3 +27,13 @@
   - 完整提取原始架构方案（`1dc41f6d-58f1-4971-ba73-4eabca45bde5`）中的全部业务细节，结合已敲定的轻量化技术架构（`D-001=A` SQLite WAL + 同步排他事务锁），编写并创建 [REQUIREMENTS.md](../../REQUIREMENTS.md)。
   - 在 `AGENTS.md` 与 `logs/Links/current.md` 中将 `REQUIREMENTS.md` 注册为业务与接口契约的唯一事实源（SSOT）。
 - **回退方式**：删除 `REQUIREMENTS.md` 并还原 `AGENTS.md` 顶部链接。
+
+## 2026-09-26T15:25:00+08:00 — 完成 Phase 1 (`feat/server-core`) SQLite WAL 50 并发锁座引擎与阶梯退票测试验证
+- **触发依据**：用户已安装好微信开发者工具，确认采用 Git (`main` + 功能分支) 模式开始正式开发。
+- **执行动作**：
+  - 执行 `git init -b main` 并提交文档基线（`d3ba94c`），切出功能分支 `feat/server-core`。
+  - 创建 `server/` 核心代码：`src/types/domain.ts`、`src/config/env.ts`、`src/db/schema.ts`、`src/services/seat-lock.ts`、`src/services/seat-lock.test.ts`、`run-all-tests.ts`。
+- **外部验证证据**：
+  - 初次执行 `npm run typecheck` 检出 `seat-lock.ts(171,13)` 泛型元组参数数量不匹配（`<[string]>` -> `<[number, string, number]>`），修复后重新执行 `npm run typecheck` 退出码 `0`（零错误）。
+  - 执行 `npm test`（`tsx run-all-tests.ts`）：`[✓] src/services/seat-lock.test.ts (83ms)`，覆盖 53 座初始化与预留座拦截、50 并发同抢 03 号座（1 成功 / 49 拦截）、多座部分冲突整单回滚、单人 2 座配额拦截、301 秒惰性过期重抢、微信回调幂等与迟到支付自动原路退款、阶梯退票（>=48h 5% / 24-48h 20% / <24h 拦截）及席位自愈归还配额。
+- **回退方式**：`git checkout main` 或回退 `feat/server-core` 分支提交。

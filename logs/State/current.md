@@ -1,20 +1,20 @@
 # Current State — 工作区与执行状态
 
 ## 1. 基线状态
-- 更新时间：`2026-09-26T15:00:00+08:00`
-- 工作区路径：`c:\Users\59184\Desktop\ChaoZhouBus`
+- 更新时间：`2026-09-26T15:25:00+08:00`
+- 当前分支：`feat/server-core`（基于 `main` 提交 `d3ba94c` 切出）
 
 ## 2. 已完成切片
-- [x] **Slice 1**：完成 `logs/` 工程日志目录初始化（响应决策 `D-003 = A`）。
-- [x] **Slice 2**：根据用户确认的 `D-001 = A`（Node.js + TS + Fastify + `better-sqlite3` WAL 轻量全栈）、`D-002 = A`（`miniprogram/` + `server/` + `deploy/`）与 `D-004 = A`，完成全部规范文档改造：
-  - 更新 [AGENTS.md](../../AGENTS.md)
-  - 重写 [CONTRIBUTING.md](../../CONTRIBUTING.md)
-  - 重写 [CODE_REVIEW_GUIDE.md](../../CODE_REVIEW_GUIDE.md)
-  - 重置 [CHANGELOG.md](../../CHANGELOG.md)
-  - 对齐 [00-coding-agent-first-law.yaml](../../00-coding-agent-first-law.yaml) 引用路径
+- [x] **Slice 1**：完成 `logs/` 工程日志目录初始化与规范文档去旧化重写，落盘唯一事实源 [REQUIREMENTS.md](../../REQUIREMENTS.md)，并提交至 `main` 基线（`d3ba94c`）。
+- [x] **Slice 2（Phase 1 核心服务端与 50 并发排他事务引擎）**：
+  - 创建 `server/package.json`、`server/tsconfig.json`、`server/.env.example`、`server/run-all-tests.ts`
+  - 实现领域类型 [domain.ts](../../server/src/types/domain.ts) 与配置 [env.ts](../../server/src/config/env.ts)
+  - 实现 SQLite 3 (WAL) 表结构初始化 [schema.ts](../../server/src/db/schema.ts)
+  - 实现核心选座排他事务与阶梯退票自愈服务 [seat-lock.ts](../../server/src/services/seat-lock.ts)
+  - 实现并跑通 7 大核心不变性测试套件 [seat-lock.test.ts](../../server/src/services/seat-lock.test.ts)
+  - 验证证据：`npm run typecheck` 零错误；`npm test` 全部通过（`83ms`）。
 
-## 3. 当前待推进阶段
-- 文档与架构规范已全部就绪，等待用户确认是否开始搭建 `server/`（SQLite WAL + 53 座锁座核心服务 + 50 并发测试）与 `miniprogram/` 脚手架。
-
-## 4. 回退点
-- 如需恢复原始拷贝文档，可通过版本控制或备份文件还原 `AGENTS.md`、`CONTRIBUTING.md`、`CODE_REVIEW_GUIDE.md`、`CHANGELOG.md`。
+## 3. 下一阶段计划（Phase 2）
+- 在合并 `feat/server-core` 入 `main` 后，切出 `feat/api-and-export` 分支，实现：
+  1. 管理员 A4 检票名册 Excel 导出服务（`RosterExportService` + `roster-export.test.ts`）与返乡意向统计服务；
+  2. Fastify REST API 路由层（完整实现 `REQUIREMENTS.md` 第五章全部 11 个 API 接口）与本地启动入口 `server/src/index.ts`。

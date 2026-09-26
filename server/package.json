@@ -1,0 +1,25 @@
+{
+  "name": "chaozhou-bus-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx run-all-tests.ts"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "exceljs": "^4.4.0",
+    "fastify": "^5.2.1",
+    "@fastify/cors": "^10.0.2",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.13.4",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}
