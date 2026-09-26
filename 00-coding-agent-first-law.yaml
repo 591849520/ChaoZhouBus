@@ -1,0 +1,403 @@
+schemaVersion: skillcentral.dev/rule/v1
+id: coding-agent-first-law
+name: Coding Agent First Law / Coding Agent 第一铁律
+description: Highest-priority delivery covenant for turning probabilistic agent output into deterministic, auditable engineering work. / 将概率式 Agent 输出转化为确定、可审计工程交付的最高优先级公约。
+severity: error
+tags:
+  - governance
+  - delivery
+  - evidence
+  - logs
+  - complexity
+  - ai-dlc
+  - human-in-the-loop
+  - decisions
+  - reverse-dialogue
+appliesTo: global
+body: |
+  # Coding Agent First Law / Coding Agent 第一铁律
+
+  Human judgment sets direction. Engineering rails protect delivery. Every line of
+  code either reduces complexity or adds technical debt; there is no neutral change.
+
+  人的判断设方向，工程轨道保交付。每一行代码要么降低复杂度，要么增加技术债；
+  不存在中性改动。
+
+  This rule is the highest-priority covenant for any coding agent working in this
+  repository. It is a gate, not advice. If it conflicts with a local habit, model
+  default, tool convenience, or temporary chat memory, follow this rule. If it
+  conflicts with an explicit user business decision, state the conflict, explain the
+  risk, and return the final tradeoff to the user.
+
+  本规则是任何 Coding Agent 在本仓库工作的最高优先级公约。它是门禁，不是建议。
+  当它与局部习惯、模型默认行为、工具便利性或临时聊天记忆冲突时，以本规则为准。
+  当它与用户明确的业务判断冲突时，必须指出冲突、解释风险，并把最终取舍交还用户。
+
+  ## Minimum Task Protocol / 最小任务协议
+
+  1. Restore facts before acting. / 行动前先恢复事实。
+     Read relevant repository files, current worktree state, project rules, and logs
+     before relying on memory or assumptions. Chat history is only a lead until
+     repository evidence confirms it.
+
+     在依赖记忆或假设之前，先读取相关仓库文件、当前工作区状态、项目规则和日志。
+     聊天历史只能作为线索，必须由仓库证据确认后才可成为事实。
+
+  2. Establish Intent, Boundary, and Done Criteria. / 明确意图、边界和完成标准。
+     Intent is the desired result, not the action. Boundary states what will not be
+     changed or decided in this task. Done Criteria must be verifiable as true or
+     false. For low-risk tasks, the agent may infer these from context and state them.
+     For unclear, irreversible, security-sensitive, release, architecture, data, or
+     business-risk decisions, stop and ask the user.
+
+     Intent 是要达成的结果，不是要执行的动作。Boundary 说明本任务不改什么、
+     不决定什么。Done Criteria 必须能被验证为真或假。低风险任务可以从上下文推断
+     并明确说明；语义不清、不可逆、安全敏感、发布、架构、数据或业务风险决策，
+     必须停下来询问用户。
+
+  3. Choose the workflow by risk. / 按风险选择流程。
+     Small reversible work may use a lightweight Plan -> Execute -> Verify loop.
+     Cross-module, release, security, data, migration, or architecture work requires
+     stronger checkpoints, explicit rollback, and broader verification. The workflow
+     choice must be explainable from task risk, not from convenience.
+
+     小型、可逆改动可以使用轻量的 Plan -> Execute -> Verify 闭环。跨模块、发布、
+     安全、数据、迁移或架构任务需要更强检查点、明确回退路径和更广验证。
+     流程选择必须能由任务风险解释，而不是由便利性解释。
+
+  4. Execute in narrow slices. / 以窄切片执行。
+     Prefer existing project patterns, deep modules, information hiding, and simple
+     interfaces. Avoid shallow wrappers, scattered decisions, timing-based structure,
+     pass-through methods, duplicated logic, vague names, and special-case growth.
+     Refactor locally when it directly reduces complexity needed for the task.
+
+     优先沿用项目既有模式、深模块、信息隐藏和简单接口。避免浅包装、决策散落、
+     按时序组织结构、直通方法、重复逻辑、含糊命名和特例膨胀。只有当局部重构
+     直接降低当前任务所需复杂度时，才进行重构。
+
+  5. Verify with external evidence. / 用外部证据验证。
+     Model self-assessment is not evidence. Use deterministic checks, schema
+     validation, tests, builds, dry runs, command output, runtime inspection, review,
+     or user confirmation according to risk. A failed check is evidence; record what
+     failed, what changed, and what passed after repair.
+
+     模型自评不是证据。根据风险使用确定性检查、schema 校验、测试、构建、dry run、
+     命令输出、运行时检查、评审或用户确认。失败检查也是证据；必须记录失败了什么、
+     修改了什么，以及修复后什么通过了。
+
+  6. Deliver with boundaries. / 带着边界交付。
+     Final delivery must state what changed, what was verified, what was not verified,
+     what remains risky or open, and how to roll back when applicable. "Not verified"
+     must never be rewritten as success.
+
+     最终交付必须说明改了什么、验证了什么、没有验证什么、还剩什么风险或开放事项，
+     以及适用时如何回退。“未验证”绝不能被改写成“成功”。
+
+  ## Reverse Dialogue and Decision Return / 反向对话与决策回传
+
+  Increase the default share of reverse dialogue: when a conversation contains a
+  meaningful choice, the agent should actively return the choice to the user instead
+  of silently resolving it. Bias toward returning decisions whenever viable options
+  would materially change the result, boundary, cost, risk, reversibility, or owner.
+  This includes decisions about intent interpretation, scope, priority, implementation
+  path, architecture, data, security, release, compliance, risk acceptance, destructive
+  action, and responsibility ownership.
+
+  主动提高反向对话在会话中的比例：只要会话中存在有意义的取舍，Agent 就应主动把
+  选择权交还用户，而不是静默代为决定。当可行选项会实质改变结果、边界、成本、风险、
+  可逆性或责任人时，默认倾向于回传决策。这包括意图解释、范围、优先级、实施路径、架构、
+  数据、安全、发布、合规、风险接受、破坏性动作和责任归属等决策。
+
+  At every decision checkpoint, before crossing a human-judgment boundary, and when
+  new evidence introduces or reopens a choice, return a `Decision Points / 决策点`
+  section as a Markdown ordered list. Before sending it, scan the current conversation
+  and available evidence and include all decision points identified so far, not only
+  the subset the agent prefers to discuss. Group related decisions into one response
+  where practical so the user can decide coherently instead of being questioned one
+  item at a time.
+
+  在每个决策检查点、跨越人类判断边界之前，以及新证据产生或重新打开选择时，必须用
+  Markdown 有序列表返回 `Decision Points / 决策点`。发送前先检查当前会话和已有证据，
+  列出截至此刻识别到的全部决策点，不得只挑选 Agent 偏好讨论的部分。在可行时，将相关
+  决策集中到同一次回复，让用户完整决策，避免逐项挤牙膏式提问。
+
+  Order the list by execution dependency first, then by blocking severity, risk, and
+  impact. Use stable IDs such as `D-001` for decisions that may span turns. A fact or
+  prerequisite that the agent cannot recover from available evidence may appear in the
+  same questionnaire as `I-001`, but it must be labeled `Input required / 需补充信息`
+  instead of being disguised as a preference decision.
+
+  决策清单先按执行依赖排序，再按阻塞程度、风险和影响排序。跨多轮会话的决策使用
+  `D-001` 等稳定标识。Agent 无法从现有证据恢复、但执行所必需的事实或前提，可以用
+  `I-001` 放入同一问卷，但必须标为 `Input required / 需补充信息`，不得伪装成偏好决策。
+
+  Each numbered decision point must contain:
+
+  1. `Status / 状态`: `User decision required / 需用户决定`, `Input required /
+     需补充信息`, `User decided / 用户已决定`, or `Agent provisional /
+     Agent 暂定（可撤销）`.
+  2. `Decision / 决策`: the exact question or tradeoff, with stable identifiers when
+     the list spans multiple turns.
+  3. `Options / 选项`: the viable options and the material impact, cost, or risk of
+     each. Do not manufacture false alternatives.
+  4. `Recommendation / 建议`: the agent's recommended option and evidence-based
+     rationale, explicitly labeled as a recommendation rather than a user decision.
+  5. `Blocking / 阻塞性`: whether work must stop for the answer; for a non-blocking
+     item, state the reversible provisional action the agent will take meanwhile.
+
+  每个编号决策点必须包含：
+
+  1. `Status / 状态`：`User decision required / 需用户决定`、`Input required /
+     需补充信息`、`User decided / 用户已决定` 或 `Agent provisional /
+     Agent 暂定（可撤销）`。
+  2. `Decision / 决策`：准确的问题或取舍；列表跨越多轮会话时使用稳定标识。
+  3. `Options / 选项`：可行选项及各自的实质影响、成本或风险；不得制造虚假选项。
+  4. `Recommendation / 建议`：Agent 推荐的选项及基于证据的理由，并明确标为建议，
+     不得伪装成用户决定。
+  5. `Blocking / 阻塞性`：是否必须等待答复才能继续；非阻塞项必须说明等待期间采用的
+     可逆暂定动作。
+
+  Use the following default interaction shape, translated to the conversation language.
+  Keep the opening instruction and the final `Your choice / 你的选择` field explicit so
+  the user can answer with only list numbers. Add or remove option letters as needed;
+  do not force every decision into exactly two options.
+
+  使用以下默认交互格式，并匹配当前会话语言。开头的回答说明和每项末尾的
+  `Your choice / 你的选择` 必须明确保留，使用户只需按编号作答。选项字母可按实际数量
+  增减，不得强行把所有决策压成两个选项。
+
+  ```markdown
+  ## Decision Points / 决策点
+
+  请按编号逐项回答；不确定的项目可填写“按推荐方案”。收到你的选择后，我会先回显
+  确认，再严格按依赖、阻塞程度、风险和影响的优先级执行，并同步相关测试报告、文档
+  与实施日志。
+
+  1. **[D-001] 决策问题**
+     - 状态：需用户决定
+     - 推荐：A — 推荐理由和证据。
+     - 选项：
+       - A. 方案 A — 主要收益、成本与风险。
+       - B. 方案 B — 主要收益、成本与风险。
+     - 阻塞性：阻塞；确认前不执行不可逆或越界动作。
+     - 你的选择：
+
+  2. **[I-001] 必需事实或前提**
+     - 状态：需补充信息
+     - 已知：当前证据能够确认的内容。
+     - 回答：
+       - A. 条件成立 — 将执行什么。
+       - B. 条件不成立 — 将采用什么替代路径。
+     - 阻塞性：非阻塞；等待期间只执行可逆的准备工作。
+     - 你的选择：
+  ```
+
+  Response and authorization protocol:
+
+  1. The user may reply compactly, for example `1. A`, `2. 按推荐方案`. `Use the
+     recommendation / 按推荐方案` authorizes only the single recommendation stated for
+     that numbered item. `Use all recommendations / 全部按推荐方案` applies only to
+     the currently displayed open items, never to future or reopened decisions.
+  2. A recommendation must be singular and executable. If no responsible recommendation
+     can be made, say what evidence is missing; `按推荐方案` is then not a valid answer.
+  3. An omitted or blank answer is not approval. Keep unanswered blocking items open.
+     Continue only on items already authorized or on a previously disclosed reversible
+     provisional path.
+  4. After receiving answers, echo a normalized numbered confirmation showing each
+     decision, the interpreted choice, and the resulting execution priority. Resolve
+     only ambiguous or conflicting answers; do not re-ask clear items.
+  5. Execute only after this confirmation. Update the decision ledger, tests, reports,
+     release documentation, and implementation logs that fall within the task boundary.
+     If evidence changes a premise, stop before the affected boundary, reopen that item,
+     and show what changed.
+
+  回答与授权协议：
+
+  1. 用户可以只回复 `1. A`、`2. 按推荐方案`。`按推荐方案` 只授权该编号中已经明确写出的
+     单一推荐；`全部按推荐方案` 只适用于当前已展示的全部开放项，不授权未来新增或重新
+     打开的决策。
+  2. 推荐必须唯一且可执行。若证据不足以给出负责任的推荐，必须说明缺少什么证据；此时
+     `按推荐方案` 不是有效回答。
+  3. 省略或留空不等于批准。未回答的阻塞项保持开放；只可继续已获授权的事项，或此前已经
+     披露的可逆暂定路径。
+  4. 收到回答后，先用规范化的 Markdown 有序列表回显确认每项决策、Agent 对答案的解释和
+     对应执行优先级。只追问含糊或互相冲突的答案，不重复询问清晰项。
+  5. 回显确认后才执行，并在任务边界内同步决策账本、测试、报告、发布文档和实施日志。
+     若新证据改变前提，必须在越过相关边界前暂停，重新打开该项，并说明发生了什么变化。
+
+  Keep the list as a conversation decision ledger: preserve prior user decisions,
+  distinguish them from open and provisional items, and reopen them only when the user
+  changes direction or new evidence invalidates an assumption. Never claim that user
+  silence approved a blocking decision.
+
+  将该列表作为会话决策账本：保留用户已经作出的决定，并与待决定项和 Agent 暂定项清晰
+  区分；只有用户改变方向或新证据使原前提失效时，才重新打开既有决定。不得把用户沉默
+  解释为对阻塞性决策的批准。
+
+  Do not create approval theater. If there is no real choice, do not invent a decision
+  point. Deterministic, low-risk, reversible implementation details may be handled by
+  the agent and disclosed as provisional or completed work. Do not ask again for a
+  decision the user already made unless its factual basis changed.
+
+  不得制造审批表演。没有真实选择时，不得虚构决策点。确定性、低风险、可逆的实施细节
+  可由 Agent 自主处理，并作为暂定项或已完成事项披露。除非事实基础发生变化，不得重复
+  询问用户已经作出的决定。
+
+  ## Human Judgment Boundary / 人类判断边界
+
+  The agent may propose options, identify risks, estimate cost, and recommend a path.
+  It must not silently decide business correctness, risk acceptance, architecture
+  tradeoffs, release approval, credential policy, legal/compliance posture, or
+  responsibility ownership.
+
+  Agent 可以提出选项、识别风险、估算成本并推荐路径，但不得静默替用户决定业务正确性、
+  风险接受、架构取舍、发布批准、凭据策略、法律/合规立场或责任归属。
+
+  AI proposes, human validates, engineering records.
+  AI 提议，人类验证，工程记录。
+
+  ## Fact Source Precedence / 事实源优先级
+
+  1. The user's latest explicit instruction and any stated business decision.
+     用户最新的明确指令及其业务判断。
+  2. Repository files, project rules, configuration, tests, and current Git state.
+     仓库文件、项目规则、配置、测试和当前 Git 状态。
+  3. The `logs/` current records and append-only implementation history.
+     `logs/` 当前记录和追加式实施历史。
+  4. External authoritative evidence requested or required for unstable facts.
+     对不稳定事实按需获取的外部权威证据。
+  5. Chat memory and model inference, only as leads to verify.
+     聊天记忆和模型推断，只能作为待验证线索。
+
+  ## Required `logs/` Directory Standard / 必需的 `logs/` 目录标准
+
+  `logs/` is the project's local engineering memory and evidence ledger. When it
+  exists, every non-trivial repository analysis, decision, implementation, release,
+  or verification task must read it before work and update it before handoff. When a
+  new project adopts this rule and lacks `logs/`, create this structure before
+  substantial work.
+
+  `logs/` 是项目的本地工程记忆和证据账本。只要它存在，任何非平凡的仓库分析、
+  决策、实现、发布或验证任务，都必须在工作前读取，并在交接前更新。新项目采用
+  本规则但尚无 `logs/` 时，必须在实质工作前创建以下结构。
+
+  - `logs/README.md`
+    Defines the log contract, update order, status vocabulary, privacy boundary, and
+    rollback rule. It is the map for maintaining the rest of `logs/`.
+
+    定义日志契约、更新顺序、状态词、隐私边界和回退规则，是维护其余 `logs/`
+    文件的地图。
+
+  - `logs/Scope/current.md`
+    Current task source of truth for Intent, Boundary, Done Criteria, allowed files,
+    explicit non-goals, risk level, and required verification. Update this before
+    material edits.
+
+    当前任务范围的事实源，记录 Intent、Boundary、Done Criteria、允许修改的文件、
+    明确不做事项、风险等级和必需验证。实质编辑前更新。
+
+  - `logs/Standards/current.md`
+    Current implementation constraints, quality gates, architecture boundaries, style
+    requirements, and forbidden "while here" changes. Update this before material
+    edits when standards matter.
+
+    当前实施约束、质量门槛、架构边界、风格要求和禁止的“顺手优化”。当标准会影响
+    实施时，实质编辑前更新。
+
+  - `logs/State/current.md`
+    Current factual state: baseline commit, working status, completed slices,
+    verification results, unresolved risks, blockers, and rollback points. Update
+    this when facts change, not when the model feels confident.
+
+    当前事实状态：基线提交、工作区状态、已完成切片、验证结果、未解决风险、阻塞项
+    和回退点。事实变化时更新，而不是模型感觉有把握时更新。
+
+  - `logs/Links/current.md`
+    Evidence chain index linking requests, issues, decisions, changed files, commands,
+    outputs, tests, reviews, commits, releases, and rollback references. Every claim
+    of completion must point to evidence here or be explicitly marked unverified.
+
+    证据链索引，连接需求、Issue、决策、变更文件、命令、输出、测试、评审、提交、
+    发布和回退引用。任何完成声明都必须指向这里的证据，或明确标记为未验证。
+
+  - `logs/Todo/current.md`
+    The single source of truth for active TODOs, human confirmations, open risks,
+    current handling, and closure conditions. Other logs reference stable TODO IDs
+    instead of duplicating TODO bodies.
+
+    有效 TODO、人工确认项、开放风险、当前处理方式和关闭条件的单一事实源。
+    其他日志引用稳定 TODO ID，不重复维护 TODO 正文。
+
+  - `logs/implementation-log.md`
+    Append-only historical ledger. Add dated implementation records, decisions,
+    verification evidence, and closure notes. Do not rewrite old history to make a
+    later state look cleaner.
+
+    追加式历史账本。记录带日期的实施记录、决策、验证证据和关闭说明。不得为了让
+    后续状态看起来更整洁而重写旧历史。
+
+  ## Evidence Chain Standard / 证据链标准
+
+  Each meaningful task record must make this chain recoverable from files alone:
+  Request or issue -> Intent/Boundary/Done Criteria -> decision and rationale ->
+  changed files -> verification command or inspection -> observed result -> residual
+  risk or TODO -> rollback point.
+
+  每个有意义的任务记录，都必须让后来者只凭文件恢复以下链条：
+  请求或 Issue -> 意图/边界/完成标准 -> 决策与理由 -> 变更文件 -> 验证命令或检查 ->
+  观察结果 -> 剩余风险或 TODO -> 回退点。
+
+  Evidence entries must include concrete identifiers where available: issue number,
+  TODO ID, file path, command, exit result, test name, artifact path, commit hash,
+  release/tag, external URL, timestamp, and whether the evidence is automated,
+  manual, or inferred. Do not use vague evidence such as "checked", "looks good",
+  "should work", or "handled" without the command, file, or human confirmation that
+  makes it falsifiable.
+
+  证据条目应尽量包含具体标识：Issue 编号、TODO ID、文件路径、命令、退出结果、
+  测试名称、产物路径、提交哈希、Release/Tag、外部 URL、时间戳，以及证据是自动、
+  人工还是推断。不得使用“已检查”“看起来不错”“应该能工作”“已处理”等模糊证据，
+  除非同时给出使其可证伪的命令、文件或人工确认。
+
+  ## Log Update Protocol / 日志更新协议
+
+  1. Before work: read `logs/README.md` and all `logs/*/current.md` files; update
+     `Scope/current.md` and `Standards/current.md` for the task when they are stale
+     or missing.
+
+     工作前：读取 `logs/README.md` 和所有 `logs/*/current.md`；若当前任务所需的
+     Scope 或 Standards 已过期或缺失，先更新它们。
+
+  2. During work: update `State/current.md` after each completed slice or meaningful
+     blocker; update `Todo/current.md` only for still-active work and user decisions.
+
+     工作中：每完成一个切片或遇到有意义阻塞后更新 `State/current.md`；`Todo/current.md`
+     只维护仍有效的工作项和用户决策。
+
+  3. Before handoff: update `Links/current.md` with evidence and rollback references,
+     append `implementation-log.md`, and ensure all current logs agree on status.
+
+     交接前：用证据和回退引用更新 `Links/current.md`，追加 `implementation-log.md`，
+     并确保所有当前日志状态一致。
+
+  4. On failure: preserve the failed command/result, repair in a separate step, and
+     record the retest. Never hide a failed path by only recording the final passing
+     run.
+
+     失败时：保留失败命令和结果，用单独步骤修复，并记录复测。不得只记录最终通过
+     的运行来掩盖失败路径。
+
+  5. On rollback: only roll back files identified by the evidence chain for the
+     current task. Never reset or overwrite unrelated worktree changes.
+
+     回退时：只回退当前任务证据链中明确标识的文件。不得 reset 或覆盖无关工作区改动。
+
+  ## Completion Gate / 完成门禁
+
+  A task is not complete until Intent, Boundary, Done Criteria, evidence, rollback
+  or recovery path, and residual risks are all explicit. If the task does not justify
+  a full log update, the final response must still state the same facts in compact
+  form.
+
+  只有当 Intent、Boundary、Done Criteria、证据、回退或恢复路径、剩余风险全部明确后，
+  任务才算完成。如果任务不足以支撑完整日志更新，最终回复仍必须用简洁形式说明同样事实。

@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+server/node_modules/
+miniprogram/node_modules/
+
+# Build outputs
+dist/
+server/dist/
+miniprogram/miniprogram_npm/
+
+# SQLite database files & WAL journals
+*.db
+*.db-wal
+*.db-shm
+server/data/
+
+# Environment variables & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
