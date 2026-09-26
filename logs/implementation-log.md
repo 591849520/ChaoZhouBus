@@ -60,3 +60,15 @@
   - 初测捕获 `seat-helper.js` 的 `cssClass` 与 ISO 日期兼容细节，修复后复测 `npm run typecheck` 零错误，`npm test` 4 个测试套件全部通过（`app.test.ts`、`miniprogram-layout.test.ts`、`roster-export.test.ts`、`seat-lock.test.ts`，总耗时 `843ms`）。
 - **回退方式**：当前处于 `feat/miniprogram` 分支，遵循 `AGENTS.md` 铁律第 8 条未执行 `git commit` / `git push`，可通过 `git checkout main` 无损回退。
 
+## 2026-09-26T22:47:00+08:00 — 完成跨层 Code Review 契约修复与前后端联调回归测试 (`fix/miniprogram-api-contract`)
+- **触发依据**：用户指令“根据codereview审查目前的代码，看看是否存在问题”并在审阅报告后下达“修复”指令。
+- **修复内容**：
+  1. `miniprogram/utils/api.js`：自动解包后端 `{ code: 0, data }` 响应结构，并将 `downloadAndOpenRosterExcel` 封装为返回 `Promise`。
+  2. `miniprogram/app.js`：统一 `studentProfiles`、`currentUser`、`getCurrentUser()` 与 `switchStudentProfile(openid)`，修复首页学友演示切换器。
+  3. `miniprogram/pages/*` 全部 4 个页面控制器：统一对齐 `/api/v1/...` 路由前缀、锁座 Payload (`passengers: [{ seat_number, name, phone }]`)、数字状态枚举 `OrderStatus (0/1/2/3/4)`、毫秒级 `locked_until` 及管理大盘统计字段。
+  4. `server/src/services/miniprogram-layout.test.ts`：新增小程序页面源码 `/api/v1/` 路径扫描断言及基于 `buildApp().app.inject()` 的前后端全链路契约联调回归测试。
+- **外部验证证据**：
+  - `npm run typecheck` 零错误；`npm test` 4 个测试套件全部通过（总耗时 `947ms`）。
+- **回退方式**：当前修改位于 `fix/miniprogram-api-contract` 分支，等待用户指令再提交并合入 `main`。
+
+

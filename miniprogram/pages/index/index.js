@@ -47,7 +47,10 @@ Page({
   initProfiles() {
     const app = getApp();
     const profiles = (app && app.globalData && app.globalData.studentProfiles) || [];
-    const currentProfile = (app && app.globalData && app.globalData.currentUser) || profiles[0] || {};
+    const currentProfile =
+      (app && typeof app.getCurrentUser === 'function' && app.getCurrentUser()) ||
+      profiles[0] ||
+      {};
     const profileTabOptions = profiles.map((p) => ({
       label: p.label,
       value: p.openid,
@@ -76,50 +79,62 @@ Page({
 
   async loadSchedules() {
     try {
-      const res = await api.get('/api/schedules');
-      const rawList = res.schedules || [];
+      const [schedulesRes, ordersRes] = await Promise.all([
+        api.get('/api/v1/schedules'),
+        api.get('/api/v1/orders').catch(() => ({ orders: [] })),
+      ]);
+
+      const rawList = schedulesRes.schedules || [];
+      const myOrders = (ordersRes && ordersRes.orders) || [];
       let activeBanner = null;
 
-      // 并发拉取各班次下当前用户的有效订单状态
-      const enriched = await Promise.all(
-        rawList.map(async (item) => {
-          let myOrder = null;
-          try {
-            const detail = await api.get(`/api/schedules/${item.id}`);
-            myOrder = detail.my_active_order || null;
-          } catch (_err) {
-            myOrder = null;
+      // 优先查找当前用户的待支付(status===0)或已支付(status===1)有效订单
+      const activeOrdersBySchedule = new Map();
+      for (const ord of myOrders) {
+        if (ord.status === 0 || ord.status === 1) {
+          if (!activeOrdersBySchedule.has(ord.schedule_id)) {
+            activeOrdersBySchedule.set(ord.schedule_id, ord);
           }
-
-          if (myOrder && !activeBanner) {
-            const seatStr = (myOrder.items || []).map((i) => i.seat_number).join('、');
-            if (myOrder.status === 'PENDING_PAYMENT') {
+          if (!activeBanner) {
+            const seatStr = (ord.passengers || []).map((p) => p.seat_number).join('、');
+            if (ord.status === 0) {
               activeBanner = {
-                orderId: myOrder.order_id,
+                orderId: ord.id,
                 variant: 'warning',
                 title: `⏳ 待支付订单（座位 ${seatStr}）`,
                 description: '席位为您保留 300 秒，请尽快完成微信支付，超时将自动释放',
               };
-            } else if (myOrder.status === 'PAID') {
+            } else if (ord.status === 1) {
               activeBanner = {
-                orderId: myOrder.order_id,
+                orderId: ord.id,
                 variant: 'success',
-                title: `🎫 已出票（${item.title} · 座位 ${seatStr}）`,
+                title: `🎫 已出票（${ord.route_name} · 座位 ${seatStr}）`,
                 description: '上车时请出示电子乘车凭单或 6 位检票码供领队核验',
               };
             }
           }
+        }
+      }
 
-          return {
-            ...item,
-            formattedDepartureTime: seatHelper.formatDateTime(item.departure_time),
-            priceYuan: (Number(item.unit_price_cents || 0) / 100).toFixed(0),
-            pickupText: (item.pickup_stations || []).join(' / '),
-            dropoffText: (item.dropoff_stations || []).join(' / '),
-            myOrderId: myOrder ? myOrder.order_id : '',
-          };
-        })
-      );
+      const enriched = rawList.map((item) => {
+        const myOrder = activeOrdersBySchedule.get(item.id) || null;
+        const priceCents = Number(item.price_in_cents || item.unit_price_cents || 0);
+        const remainingSeats =
+          item.available_seats !== undefined
+            ? Number(item.available_seats)
+            : Number(item.remaining_seats || 0);
+
+        return {
+          ...item,
+          title: item.route_name || item.title || '潮州同乡会大巴专车',
+          remaining_seats: remainingSeats,
+          formattedDepartureTime: seatHelper.formatDateTime(item.departure_time),
+          priceYuan: (priceCents / 100).toFixed(0),
+          pickupText: (item.pickup_stations || []).join(' / '),
+          dropoffText: (item.dropoff_stations || []).join(' / '),
+          myOrderId: myOrder ? myOrder.id : '',
+        };
+      });
 
       this.setData({
         schedules: enriched,
@@ -187,18 +202,23 @@ Page({
 
   async submitIntention() {
     const form = this.data.intentionForm;
-    if (!form.expected_date) {
-      wx.showToast({ title: '请填写期望出发日期', icon: 'none' });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(form.expected_date || '')) {
+      wx.showToast({ title: '日期格式需为 YYYY-MM-DD', icon: 'none' });
       return;
     }
 
+    const profile = this.data.currentProfile || {};
+    const studentName = profile.name || '同乡学友';
+    const phone = /^1\d{10}$/.test(profile.phone || '') ? profile.phone : '13800138001';
+
     this.setData({ submittingIntention: true });
     try {
-      await api.post('/api/intentions', {
-        expected_date: form.expected_date,
-        preferred_pickup_station: form.preferred_pickup_station,
-        preferred_dropoff_station: form.preferred_dropoff_station,
-        seat_count: Number(form.seat_count || 1),
+      await api.post('/api/v1/intentions', {
+        student_name: studentName,
+        phone,
+        departure_campus: form.preferred_pickup_station,
+        destination: form.preferred_dropoff_station,
+        travel_date: form.expected_date,
       });
       wx.showToast({
         title: '意向登记成功，满45人将通知您',

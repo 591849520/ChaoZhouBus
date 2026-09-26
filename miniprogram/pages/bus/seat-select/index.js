@@ -34,11 +34,40 @@ Page({
 
   async loadScheduleDetail() {
     try {
-      const detail = await api.get(`/api/schedules/${this.data.scheduleId}`);
-      const schedule = detail.schedule;
-      const seats = detail.seats || [];
-      const myActiveOrder = detail.my_active_order || null;
-      const occupiedByMe = myActiveOrder && myActiveOrder.items ? myActiveOrder.items.length : 0;
+      const [seatMapData, ordersRes] = await Promise.all([
+        api.get(`/api/v1/schedules/${this.data.scheduleId}/seat-map`),
+        api.get('/api/v1/orders').catch(() => ({ orders: [] })),
+      ]);
+
+      const schedule = {
+        id: seatMapData.schedule_id,
+        title: seatMapData.route_name,
+        route_name: seatMapData.route_name,
+        departure_time: seatMapData.departure_time,
+        unit_price_cents: seatMapData.price_in_cents,
+        price_in_cents: seatMapData.price_in_cents,
+        pickup_stations: seatMapData.pickup_stations || [],
+        dropoff_stations: seatMapData.dropoff_stations || [],
+        refund_rules: seatMapData.refund_rules,
+      };
+      const seats = seatMapData.seats || [];
+
+      // 查找当前用户在该班次下的有效订单（status 0=PENDING_PAY 或 1=PAID）
+      const activeOrders = ((ordersRes && ordersRes.orders) || []).filter(
+        (o) => o.schedule_id === this.data.scheduleId && (o.status === 0 || o.status === 1)
+      );
+      const occupiedByMe = activeOrders.reduce(
+        (sum, o) => sum + ((o.passengers && o.passengers.length) || 0),
+        0
+      );
+      const firstActive = activeOrders[0] || null;
+      const myActiveOrder = firstActive
+        ? {
+            order_id: firstActive.id,
+            status: firstActive.status === 1 ? 'PAID' : 'PENDING_PAYMENT',
+            items: firstActive.passengers || [],
+          }
+        : null;
       const remainingQuota = Math.max(0, 2 - occupiedByMe);
 
       const pickupTabOptions = (schedule.pickup_stations || []).map((s) => ({
@@ -63,7 +92,7 @@ Page({
         {
           schedule,
           formattedDepartureTime: seatHelper.formatDateTime(schedule.departure_time),
-          unitPriceYuan: (Number(schedule.unit_price_cents || 0) / 100).toFixed(0),
+          unitPriceYuan: (Number(schedule.price_in_cents || 0) / 100).toFixed(0),
           seats,
           myActiveOrder,
           remainingQuota,
@@ -85,7 +114,7 @@ Page({
   updateSelectionState(nextSelectedList) {
     const selectedNumbers = nextSelectedList.map((item) => item.seat_number);
     const layout = seatHelper.build53SeatLayout(this.data.seats, selectedNumbers);
-    const unitPriceCents = this.data.schedule ? Number(this.data.schedule.unit_price_cents || 0) : 0;
+    const unitPriceCents = this.data.schedule ? Number(this.data.schedule.price_in_cents || 0) : 0;
     const totalAmountYuan = ((unitPriceCents * nextSelectedList.length) / 100).toFixed(0);
 
     this.setData({
@@ -136,7 +165,8 @@ Page({
     }
 
     const app = getApp();
-    const currentUser = (app && app.globalData && app.globalData.currentUser) || {};
+    const currentUser =
+      (app && typeof app.getCurrentUser === 'function' && app.getCurrentUser()) || {};
     const defaultPickup =
       (this.data.pickupTabOptions[0] && this.data.pickupTabOptions[0].value) || '';
     const defaultDropoff =
@@ -207,24 +237,26 @@ Page({
 
     this.setData({ submittingLock: true });
     try {
-      const res = await api.post('/api/orders/lock', {
+      const firstItem = items[0];
+      const res = await api.post('/api/v1/orders/lock-and-pay', {
         schedule_id: this.data.scheduleId,
-        items: items.map((item) => ({
+        pickup_station: firstItem.pickup_station,
+        dropoff_station: firstItem.dropoff_station,
+        passengers: items.map((item) => ({
           seat_number: item.seat_number,
-          passenger_name: item.passenger_name.trim(),
-          passenger_phone: item.passenger_phone.trim(),
-          pickup_station: item.pickup_station,
-          dropoff_station: item.dropoff_station,
+          name: item.passenger_name.trim(),
+          phone: item.passenger_phone.trim(),
         })),
       });
 
+      const orderId = res.orderId || res.order_id;
       wx.showToast({
         title: '锁座成功，请在300秒内支付',
         icon: 'success',
       });
 
       wx.redirectTo({
-        url: `/pages/order/detail/index?orderId=${res.order_id}`,
+        url: `/pages/order/detail/index?orderId=${orderId}`,
       });
     } catch (err) {
       // 若遇 409 座位冲突，立即自动重刷座位图高亮提示

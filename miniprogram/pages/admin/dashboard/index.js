@@ -37,10 +37,10 @@ Page({
 
   async loadSchedules() {
     try {
-      const res = await api.get('/api/schedules');
+      const res = await api.get('/api/v1/schedules');
       const list = res.schedules || [];
       const scheduleTabOptions = list.map((s) => ({
-        label: s.title,
+        label: s.route_name || s.title,
         value: String(s.id),
       }));
       const selectedScheduleId =
@@ -77,16 +77,37 @@ Page({
       }
       const qs = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
 
-      const dash = await api.get(`/api/admin/schedules/${scheduleId}/dashboard${qs}`);
-      const pickupStations = (dash.schedule && dash.schedule.pickup_stations) || [];
+      const [dash, seatMapData] = await Promise.all([
+        api.get(`/api/v1/admin/schedules/${scheduleId}/dashboard${qs}`),
+        api.get(`/api/v1/schedules/${scheduleId}/seat-map`),
+      ]);
+
+      const pickupStations = seatMapData.pickup_stations || [];
       const stationFilterOptions = [
         { label: '全部站点', value: 'ALL' },
         ...pickupStations.map((s) => ({ label: s, value: s })),
       ];
 
+      const stats = {
+        sold_count: Number(dash.sold_count || 0),
+        checked_in_count: Number(dash.checked_in_count || 0),
+        unchecked_in_count: Number(
+          dash.un_checked_in_count !== undefined
+            ? dash.un_checked_in_count
+            : dash.unchecked_in_count || 0
+        ),
+        available_count: Number(dash.available_count || 0),
+      };
+
+      const normalizedPassengers = (dash.passengers || []).map((p) => ({
+        ...p,
+        passenger_name: p.name || p.passenger_name,
+        passenger_phone: p.phone || p.passenger_phone,
+      }));
+
       this.setData({
-        stats: dash.stats,
-        passengers: dash.passengers || [],
+        stats,
+        passengers: normalizedPassengers,
         stationFilterOptions,
       });
     } catch (err) {
@@ -134,14 +155,16 @@ Page({
 
     try {
       const res = await api.post(
-        `/api/admin/schedules/${this.data.selectedScheduleId}/check-in`,
+        `/api/v1/admin/schedules/${this.data.selectedScheduleId}/check-in`,
         {
           check_in_code: code,
           checked_in: true,
         }
       );
+      const seatNo = res.seatNumber || res.seat_number;
+      const pName = res.name || res.passenger_name;
       wx.showToast({
-        title: `${res.seat_number}座 ${res.passenger_name} 检票通过`,
+        title: `${seatNo}座 ${pName} 检票通过`,
         icon: 'success',
       });
       this.setData({ manualCheckInCode: '' });
@@ -178,7 +201,7 @@ Page({
     const currentlyChecked = e.currentTarget.dataset.checked === '1';
 
     try {
-      await api.post(`/api/admin/schedules/${this.data.selectedScheduleId}/check-in`, {
+      await api.post(`/api/v1/admin/schedules/${this.data.selectedScheduleId}/check-in`, {
         seat_number: seatNumber,
         checked_in: !currentlyChecked,
       });
@@ -240,20 +263,22 @@ Page({
   async handleCreateSchedule() {
     const form = this.data.createForm;
     const priceCents = Math.round(Number(form.price_yuan || 0) * 100);
-    if (!form.title || priceCents <= 0) {
-      wx.showToast({ title: '请填写完整班次名称与票价', icon: 'none' });
+    const departureMs = new Date(form.departure_time).getTime();
+    if (!form.title || priceCents <= 0 || Number.isNaN(departureMs)) {
+      wx.showToast({ title: '请填写有效的班次名称、时间与票价', icon: 'none' });
       return;
     }
 
     this.setData({ creatingSchedule: true });
     try {
-      const res = await api.post('/api/admin/schedules', {
-        title: form.title,
-        departure_time: form.departure_time,
-        unit_price_cents: priceCents,
+      const res = await api.post('/api/v1/admin/schedules', {
+        route_name: form.title,
+        departure_time: departureMs,
+        open_booking_time: Date.now() - 60_000,
+        price_in_cents: priceCents,
         pickup_stations: ['大学城南站B口', '五山地铁站B1口'],
         dropoff_stations: ['潮州人民广场', '湘桥西湖公园', '潮安彩塘客运站'],
-        reserved_seats: ['01', '02'],
+        reserved_seat_numbers: ['01', '02'],
       });
       wx.showToast({ title: '53座新班次发布成功', icon: 'success' });
       this.setData({
