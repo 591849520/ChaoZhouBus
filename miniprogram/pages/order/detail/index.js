@@ -46,54 +46,102 @@ Page({
   async loadOrderDetail() {
     if (!this.data.orderId) return;
     try {
-      const order = await api.get(`/api/orders/${this.data.orderId}`);
-      const detail = await api.get(`/api/schedules/${order.schedule_id}`);
-      const schedule = detail.schedule;
+      const rawOrder = await api.get(`/api/v1/orders/${this.data.orderId}`);
+      const seatMapData = await api.get(`/api/v1/schedules/${rawOrder.schedule_id}/seat-map`);
 
-      const statusMap = {
+      // 后端 OrderStatus 数字枚举：0=PENDING_PAY, 1=PAID, 2=REFUNDED, 3=CANCELLED, 4=EXPIRED_REFUNDING
+      const statusCodeMap = {
+        0: 'PENDING_PAYMENT',
+        1: 'PAID',
+        2: 'REFUNDED',
+        3: 'EXPIRED_CANCELLED',
+        4: 'REFUNDED',
+      };
+      const normalizedStatus =
+        typeof rawOrder.status === 'number'
+          ? statusCodeMap[rawOrder.status] || 'PENDING_PAYMENT'
+          : rawOrder.status;
+
+      const statusMetaMap = {
         PENDING_PAYMENT: { label: '待支付（锁座300s）', variant: 'warning' },
         PAID: { label: '已出票', variant: 'success' },
         REFUNDED: { label: '已退票', variant: 'default' },
         EXPIRED_CANCELLED: { label: '超时已关单', variant: 'destructive' },
       };
-      const statusMeta = statusMap[order.status] || { label: order.status, variant: 'default' };
+      const statusMeta = statusMetaMap[normalizedStatus] || {
+        label: String(normalizedStatus),
+        variant: 'default',
+      };
 
-      const enrichedItems = (order.items || []).map((item) => ({
-        ...item,
-        checkedInTimeFormatted: item.checked_in_at
-          ? seatHelper.formatDateTime(item.checked_in_at)
+      const rawPassengers = rawOrder.passengers || rawOrder.items || [];
+      const enrichedItems = rawPassengers.map((p) => ({
+        seat_number: p.seat_number,
+        passenger_name: p.name || p.passenger_name,
+        passenger_phone: p.phone || p.passenger_phone,
+        pickup_station: rawOrder.pickup_station || p.pickup_station,
+        dropoff_station: rawOrder.dropoff_station || p.dropoff_station,
+        check_in_code: p.check_in_code || null,
+        checked_in_at: p.checked_in_at || null,
+        checkedInTimeFormatted: p.checked_in_at
+          ? seatHelper.formatDateTime(p.checked_in_at)
           : '',
       }));
 
-      const refundPreview = seatHelper.previewTieredRefund(
-        order.total_amount_cents,
-        schedule.departure_time,
-        Date.now()
+      const totalAmountCents = Number(
+        rawOrder.total_amount !== undefined ? rawOrder.total_amount : rawOrder.total_amount_cents || 0
       );
+      const refundAmountCents = Number(
+        rawOrder.refund_amount !== undefined
+          ? rawOrder.refund_amount
+          : rawOrder.refund_amount_cents || 0
+      );
+      const refundFeeCents = Number(
+        rawOrder.refund_fee !== undefined ? rawOrder.refund_fee : rawOrder.refund_fee_cents || 0
+      );
+
+      const schedule = {
+        id: seatMapData.schedule_id,
+        title: seatMapData.route_name,
+        departure_time: seatMapData.departure_time,
+        refund_rules: seatMapData.refund_rules,
+      };
+
+      const refundPreview = seatHelper.previewTieredRefund(
+        totalAmountCents,
+        schedule.departure_time,
+        Date.now(),
+        schedule.refund_rules
+      );
+
+      const normalizedOrder = {
+        order_id: rawOrder.id || rawOrder.order_id,
+        schedule_id: rawOrder.schedule_id,
+        status: normalizedStatus,
+        total_amount_cents: totalAmountCents,
+        locked_until: rawOrder.locked_until,
+        items: enrichedItems,
+      };
 
       this.setData(
         {
-          order: {
-            ...order,
-            items: enrichedItems,
-          },
+          order: normalizedOrder,
           schedule,
           formattedDepartureTime: seatHelper.formatDateTime(schedule.departure_time),
-          totalAmountYuan: (Number(order.total_amount_cents || 0) / 100).toFixed(2),
-          refundAmountYuan: (Number(order.refund_amount_cents || 0) / 100).toFixed(2),
-          refundFeeYuan: (Number(order.refund_fee_cents || 0) / 100).toFixed(2),
+          totalAmountYuan: (totalAmountCents / 100).toFixed(2),
+          refundAmountYuan: (refundAmountCents / 100).toFixed(2),
+          refundFeeYuan: (refundFeeCents / 100).toFixed(2),
           statusLabel: statusMeta.label,
           statusBadgeVariant: statusMeta.variant,
           refundPreview,
         },
         () => {
-          if (order.status === 'PENDING_PAYMENT') {
-            this.startLocalCountdown(order.locked_until);
+          if (normalizedOrder.status === 'PENDING_PAYMENT') {
+            this.startLocalCountdown(normalizedOrder.locked_until);
           } else {
             this.clearLocalCountdown();
           }
 
-          if (order.status === 'PAID') {
+          if (normalizedOrder.status === 'PAID') {
             this.drawCheckInQrCodes();
           }
         }
@@ -107,19 +155,20 @@ Page({
   },
 
   /**
-   * 300秒纯本地 setInterval 倒计时（零轮询，归零时发起 1 次订单状态刷新触发服务端惰性释放）
+   * 300秒纯本地 setInterval 倒计时（兼容秒或毫秒级 locked_until，零轮询，归零时刷新一次状态）
    */
-  startLocalCountdown(lockedUntilSec) {
+  startLocalCountdown(lockedUntilInput) {
     this.clearLocalCountdown();
+    const rawVal = Number(lockedUntilInput || 0);
+    const lockedUntilMs = rawVal > 0 && rawVal < 1e11 ? rawVal * 1000 : rawVal;
 
     const tick = () => {
-      const nowSec = Math.floor(Date.now() / 1000);
-      const remaining = Number(lockedUntilSec || 0) - nowSec;
+      const remainingSec = Math.ceil((lockedUntilMs - Date.now()) / 1000);
       this.setData({
-        countdownText: seatHelper.formatCountdownMMSS(remaining),
+        countdownText: seatHelper.formatCountdownMMSS(remainingSec),
       });
 
-      if (remaining <= 0) {
+      if (remainingSec <= 0) {
         this.clearLocalCountdown();
         this.loadOrderDetail();
       }
@@ -176,11 +225,9 @@ Page({
     if (!this.data.order) return;
     this.setData({ paying: true });
     try {
-      await api.post('/api/payments/wechat-webhook', {
-        event_id: `evt_wx_${Date.now()}`,
+      await api.post('/api/v1/pay/wx-notify', {
         order_id: this.data.order.order_id,
-        wechat_transaction_id: `4200002026${Date.now()}`,
-        paid_amount_cents: this.data.order.total_amount_cents,
+        transaction_id: `4200002026${Date.now()}`,
       });
 
       wx.showToast({
@@ -212,7 +259,7 @@ Page({
         if (!res.confirm) return;
         this.setData({ refunding: true });
         try {
-          await api.post(`/api/orders/${this.data.order.order_id}/refund`, {});
+          await api.post(`/api/v1/orders/${this.data.order.order_id}/refund`, {});
           wx.showToast({
             title: '退票成功，座位已释放',
             icon: 'success',
