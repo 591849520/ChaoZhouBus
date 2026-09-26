@@ -1,0 +1,92 @@
+<view class="bus-grid-container">
+  <!-- 4色图例 + 选中状态说明 -->
+  <view class="seat-legend">
+    <view class="legend-item">
+      <view class="legend-swatch swatch--available"></view>
+      <text>可选</text>
+    </view>
+    <view class="legend-item">
+      <view class="legend-swatch swatch--selected"></view>
+      <text>已选</text>
+    </view>
+    <view class="legend-item">
+      <view class="legend-swatch swatch--locked"></view>
+      <text>锁定中</text>
+    </view>
+    <view class="legend-item">
+      <view class="legend-swatch swatch--sold"></view>
+      <text>已售</text>
+    </view>
+    <view class="legend-item">
+      <view class="legend-swatch swatch--reserved"></view>
+      <text>领队留座</text>
+    </view>
+  </view>
+
+  <!-- 车头驾驶室与前门视觉引导 -->
+  <view class="bus-shell">
+    <view class="bus-front-header">
+      <view class="driver-zone">🛞 驾驶室（前排）</view>
+      <view class="aisle-label">中央过道</view>
+      <view class="door-zone">🚪 前上车门</view>
+    </view>
+
+    <!-- 1-12排：2+2 双侧过道排布 (01~48号) -->
+    <view class="standard-rows">
+      <block wx:for="{{standardRows}}" wx:key="rowIndex">
+        <view class="bus-row">
+          <!-- 左侧双人座 -->
+          <view class="seat-pair">
+            <block wx:for="{{item.left}}" wx:for-item="seat" wx:key="seat_number">
+              <view
+                class="seat-cell {{seat.cssClass}}"
+                data-seat="{{seat.seat_number}}"
+                data-status="{{seat.status}}"
+                bindtap="handleSeatTap"
+              >
+                <text class="seat-no">{{seat.seat_number}}</text>
+                <text class="seat-tag">{{seat.label}}</text>
+              </view>
+            </block>
+          </view>
+
+          <!-- 过道排号指示 -->
+          <view class="row-index-badge">第{{item.rowIndex}}排</view>
+
+          <!-- 右侧双人座 -->
+          <view class="seat-pair">
+            <block wx:for="{{item.right}}" wx:for-item="seat" wx:key="seat_number">
+              <view
+                class="seat-cell {{seat.cssClass}}"
+                data-seat="{{seat.seat_number}}"
+                data-status="{{seat.status}}"
+                bindtap="handleSeatTap"
+              >
+                <text class="seat-no">{{seat.seat_number}}</text>
+                <text class="seat-tag">{{seat.label}}</text>
+              </view>
+            </block>
+          </view>
+        </view>
+      </block>
+    </view>
+
+    <!-- 第13排：车尾5连座 (49~53号) -->
+    <view class="back-row-wrapper" wx:if="{{backRow.length > 0}}">
+      <view class="back-row-title">第13排 · 车尾五连座（49 ~ 53）</view>
+      <view class="back-row-seats">
+        <block wx:for="{{backRow}}" wx:for-item="seat" wx:key="seat_number">
+          <view
+            class="seat-cell seat-cell--back {{seat.cssClass}}"
+            data-seat="{{seat.seat_number}}"
+            data-status="{{seat.status}}"
+            bindtap="handleSeatTap"
+          >
+            <text class="seat-no">{{seat.seat_number}}</text>
+            <text class="seat-tag">{{seat.label}}</text>
+          </view>
+        </block>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,21 @@
+<view class="ui-form-item">
+  <view wx:if="{{label}}" class="ui-form-item__label">
+    <text>{{label}}</text>
+    <text wx:if="{{required}}" class="ui-form-item__req">*</text>
+  </view>
+  <view class="ui-input-wrap {{focused ? 'ui-input-wrap--focus' : ''}} {{error ? 'ui-input-wrap--error' : ''}} {{disabled ? 'ui-input-wrap--disabled' : ''}}">
+    <input
+      class="ui-input"
+      type="{{type}}"
+      value="{{value}}"
+      placeholder="{{placeholder}}"
+      placeholder-class="ui-input__placeholder"
+      maxlength="{{maxlength}}"
+      disabled="{{disabled}}"
+      bindinput="onInput"
+      bindfocus="onFocus"
+      bindblur="onBlur"
+    />
+  </view>
+  <view wx:if="{{error}}" class="ui-form-item__error">{{error}}</view>
+</view>

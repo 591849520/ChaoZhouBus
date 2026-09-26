@@ -1,0 +1,85 @@
+.seat-select-page {
+  padding-bottom: 190rpx;
+}
+
+.quota-row {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+}
+
+.active-order-tip {
+  margin-bottom: 22rpx;
+}
+
+.passenger-form-area {
+  margin-top: 28rpx;
+}
+
+.section-label {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: var(--fg, #09090B);
+  margin: 0 6rpx 18rpx;
+}
+
+.station-pick-group {
+  margin-bottom: 20rpx;
+}
+
+.station-pick-label {
+  font-size: 25rpx;
+  font-weight: 600;
+  color: var(--fg, #09090B);
+  margin-bottom: 12rpx;
+}
+
+.sticky-bottom-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.96);
+  border-top: 2rpx solid var(--border, #E4E4E7);
+  padding: 20rpx 28rpx calc(20rpx + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  box-shadow: 0 -6rpx 24rpx rgba(9, 9, 11, 0.06);
+  z-index: 50;
+}
+
+.summary-col {
+  flex: 1;
+}
+
+.summary-seats {
+  font-size: 23rpx;
+  color: var(--muted-fg, #71717A);
+  font-weight: 500;
+  margin-bottom: 4rpx;
+}
+
+.summary-price {
+  font-size: 24rpx;
+  color: var(--fg, #09090B);
+  font-weight: 600;
+}
+
+.total-amount {
+  font-size: 38rpx;
+  font-weight: 800;
+  color: #0F766E;
+  margin: 0 6rpx;
+}
+
+.lock-hint {
+  font-size: 20rpx;
+  color: var(--muted-fg, #71717A);
+  font-weight: 400;
+}
+
+.submit-col {
+  width: 240rpx;
+}

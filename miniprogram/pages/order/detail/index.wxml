@@ -1,0 +1,139 @@
+<view class="container" wx:if="{{order}}">
+  <!-- 状态提醒横幅：300秒本地零轮询倒计时 / 已出票 / 已退票 / 超时已关单 -->
+  <view class="alert-wrapper">
+    <ui-alert
+      wx:if="{{order.status === 'PENDING_PAYMENT'}}"
+      variant="warning"
+      title="⏳ 席位已锁定，剩余支付时间 {{countdownText}}"
+      description="倒计时归零后系统将自动释放座位并关闭微信支付单（300秒双超时对齐）"
+    />
+
+    <ui-alert
+      wx:elif="{{order.status === 'PAID'}}"
+      variant="success"
+      title="✅ 电子乘车凭单已生效"
+      description="发车当天请向上车点同乡会领队出示下方 6 位数字检票码或二维码核验上车"
+    />
+
+    <ui-alert
+      wx:elif="{{order.status === 'REFUNDED'}}"
+      variant="default"
+      title="💸 订单已退票退款"
+      description="退款金额 ¥{{refundAmountYuan}}（扣除手续费 ¥{{refundFeeYuan}}），原座位已自动释放归还"
+    />
+
+    <ui-alert
+      wx:elif="{{order.status === 'EXPIRED_CANCELLED'}}"
+      variant="destructive"
+      title="⌛ 订单超过 300 秒未支付已自动关单"
+      description="原锁定座位已自动释放供其他学友选购，如需乘车请返回重新选座"
+    />
+  </view>
+
+  <!-- 班次与订单基础信息卡片 -->
+  <ui-card
+    title="{{schedule ? schedule.title : '大巴专车班次'}}"
+    subtitle="订单号：{{order.order_id}}"
+    badgeText="{{statusLabel}}"
+    badgeVariant="{{statusBadgeVariant}}"
+  >
+    <view class="meta-row">
+      <text class="meta-label">🕒 发车时间</text>
+      <text class="meta-val">{{formattedDepartureTime}}</text>
+    </view>
+    <view class="meta-row">
+      <text class="meta-label">💰 订单总额</text>
+      <text class="meta-val meta-val--price">¥{{totalAmountYuan}}（共 {{order.items.length}} 座）</text>
+    </view>
+
+    <!-- 待支付操作区 -->
+    <view wx:if="{{order.status === 'PENDING_PAYMENT'}}" class="pay-action-box">
+      <ui-button
+        variant="default"
+        block="{{true}}"
+        loading="{{paying}}"
+        debounceMs="1500"
+        bind:click="handleSimulateWechatPay"
+      >
+        💳 微信支付 ¥{{totalAmountYuan}}（演示一键回调出票）
+      </ui-button>
+    </view>
+  </ui-card>
+
+  <!-- 每张座位的独立电子乘车凭单卡片（支持1单2座各自独立检票码与核验状态） -->
+  <view class="section-title">🎫 座位乘车凭单明细（{{order.items.length}} 张）</view>
+
+  <block wx:for="{{order.items}}" wx:key="seat_number">
+    <ui-card
+      title="💺 {{item.seat_number}} 号座 · {{item.passenger_name}}"
+      subtitle="联系电话：{{item.passenger_phone}}"
+      badgeText="{{item.checked_in_at ? '✅ 已核验上车' : (order.status === 'PAID' ? '待检票上车' : statusLabel)}}"
+      badgeVariant="{{item.checked_in_at ? 'success' : (order.status === 'PAID' ? 'brand' : 'default')}}"
+    >
+      <view class="ticket-route-box">
+        <view class="station-col">
+          <text class="station-tag">上车站点</text>
+          <text class="station-name">{{item.pickup_station}}</text>
+        </view>
+        <view class="route-arrow">➔</view>
+        <view class="station-col station-col--right">
+          <text class="station-tag">预选下车点</text>
+          <text class="station-name">{{item.dropoff_station}}</text>
+        </view>
+      </view>
+
+      <!-- 已支付状态下展示 6位数字检票码 + 二维码核验区 -->
+      <view wx:if="{{order.status === 'PAID'}}" class="checkin-code-panel">
+        <view class="code-caption">现场领队扫码 / 报 6 位数字检票码核验</view>
+        <view class="six-digit-code">{{item.check_in_code || '------'}}</view>
+        <view class="qr-box">
+          <canvas
+            type="2d"
+            id="qrCanvas_{{item.seat_number}}"
+            class="qr-canvas"
+          ></canvas>
+          <view class="qr-payload-hint">核验载荷：CZBUS:{{order.schedule_id}}:{{item.seat_number}}:{{item.check_in_code}}</view>
+        </view>
+        <view wx:if="{{item.checked_in_at}}" class="checked-time-note">
+          🎉 已于 {{item.checkedInTimeFormatted}} 由领队完成点名核验
+        </view>
+      </view>
+    </ui-card>
+  </block>
+
+  <!-- 已支付订单的阶梯退票区域 -->
+  <ui-card
+    wx:if="{{order.status === 'PAID'}}"
+    title="🛡️ 阶梯退票与席位自愈说明"
+    subtitle="距离发车 ≥48h 扣 5% 手续费；24h~48h 扣 20% 手续费；<24h 锁死通道禁止自助退票"
+  >
+    <view class="refund-preview-row">
+      <text>当前退票档位：</text>
+      <text class="refund-tier-text">{{refundPreview.tierLabel}}</text>
+    </view>
+    <view wx:if="{{refundPreview.allowed}}" class="refund-preview-row">
+      <text>预计退回微信零钱：</text>
+      <text class="refund-back-price">¥{{refundPreview.refundYuan}}（手续费 ¥{{refundPreview.feeYuan}}）</text>
+    </view>
+
+    <view style="margin-top: 20rpx;">
+      <ui-button
+        variant="destructive"
+        block="{{true}}"
+        disabled="{{!refundPreview.allowed}}"
+        loading="{{refunding}}"
+        debounceMs="1500"
+        bind:click="handleApplyRefund"
+      >
+        {{refundPreview.allowed ? '申请阶梯退票并释放座位' : '距发车不足24小时，请联系领队人工改签'}}
+      </ui-button>
+    </view>
+  </ui-card>
+
+  <!-- 底部导航按钮 -->
+  <view class="footer-nav">
+    <ui-button variant="outline" block="{{true}}" bind:click="goHome">
+      返回班次首页
+    </ui-button>
+  </view>
+</view>

@@ -1,0 +1,97 @@
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  border-radius: 14rpx;
+  font-weight: 600;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+.ui-btn--block {
+  display: flex;
+  width: 100%;
+}
+
+/* Variants matching shadcn/ui */
+.ui-btn--default {
+  background-color: #0F766E;
+  color: #FFFFFF;
+  box-shadow: 0 2rpx 6rpx rgba(15, 118, 110, 0.2);
+}
+
+.ui-btn--destructive {
+  background-color: #EF4444;
+  color: #FFFFFF;
+}
+
+.ui-btn--outline {
+  background-color: #FFFFFF;
+  color: #09090B;
+  border: 2rpx solid #E4E4E7;
+}
+
+.ui-btn--secondary {
+  background-color: #F4F4F5;
+  color: #18181B;
+}
+
+.ui-btn--ghost {
+  background-color: transparent;
+  color: #0F766E;
+}
+
+/* Sizes */
+.ui-btn--default.ui-btn--sm,
+.ui-btn--destructive.ui-btn--sm,
+.ui-btn--outline.ui-btn--sm,
+.ui-btn--secondary.ui-btn--sm,
+.ui-btn--ghost.ui-btn--sm {
+  height: 60rpx;
+  padding: 0 22rpx;
+  font-size: 24rpx;
+  border-radius: 10rpx;
+}
+
+.ui-btn--default.ui-btn--md,
+.ui-btn--destructive.ui-btn--md,
+.ui-btn--outline.ui-btn--md,
+.ui-btn--secondary.ui-btn--md,
+.ui-btn--ghost.ui-btn--md {
+  height: 76rpx;
+  padding: 0 32rpx;
+  font-size: 28rpx;
+}
+
+.ui-btn--default.ui-btn--lg,
+.ui-btn--destructive.ui-btn--lg,
+.ui-btn--outline.ui-btn--lg,
+.ui-btn--secondary.ui-btn--lg,
+.ui-btn--ghost.ui-btn--lg {
+  height: 90rpx;
+  padding: 0 40rpx;
+  font-size: 30rpx;
+  border-radius: 16rpx;
+}
+
+.ui-btn--disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.ui-btn__spinner {
+  width: 28rpx;
+  height: 28rpx;
+  border: 4rpx solid rgba(255, 255, 255, 0.35);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: btn-spin 0.7s linear infinite;
+}
+
+@keyframes btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

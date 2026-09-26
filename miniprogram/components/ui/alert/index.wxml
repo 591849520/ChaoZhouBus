@@ -1,0 +1,10 @@
+<view class="ui-alert ui-alert--{{variant}}">
+  <view class="ui-alert__content">
+    <view wx:if="{{title}}" class="ui-alert__title">{{title}}</view>
+    <view wx:if="{{description}}" class="ui-alert__desc">{{description}}</view>
+    <slot></slot>
+  </view>
+  <view wx:if="{{actionText}}" class="ui-alert__action" bindtap="handleAction">
+    <text>{{actionText}} →</text>
+  </view>
+</view>

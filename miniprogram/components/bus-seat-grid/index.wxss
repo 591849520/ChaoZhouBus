@@ -1,0 +1,193 @@
+.bus-grid-container {
+  width: 100%;
+}
+
+.seat-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  padding: 18rpx 22rpx;
+  background-color: var(--card, #FFFFFF);
+  border: 2rpx solid var(--border, #E4E4E7);
+  border-radius: var(--radius-lg, 20rpx);
+  margin-bottom: 20rpx;
+  gap: 12rpx;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  font-size: 22rpx;
+  color: var(--muted-fg, #71717A);
+  font-weight: 500;
+}
+
+.legend-swatch {
+  width: 26rpx;
+  height: 26rpx;
+  border-radius: 6rpx;
+  border: 2rpx solid transparent;
+}
+
+.swatch--available {
+  background-color: var(--seat-available-bg, #FFFFFF);
+  border-color: var(--seat-available-border, #CBD5E1);
+}
+
+.swatch--selected {
+  background-color: var(--seat-selected-bg, #0D9488);
+  border-color: #0F766E;
+}
+
+.swatch--locked {
+  background-color: var(--seat-locked-bg, #FEF3C7);
+  border-color: var(--seat-locked-border, #F59E0B);
+}
+
+.swatch--sold {
+  background-color: var(--seat-sold-bg, #E4E4E7);
+  border-color: #D4D4D8;
+}
+
+.swatch--reserved {
+  background-color: var(--seat-reserved-bg, #EDE9FE);
+  border-color: var(--seat-reserved-border, #C4B5FD);
+}
+
+.bus-shell {
+  background-color: #FFFFFF;
+  border: 3rpx solid #E2E8F0;
+  border-radius: 36rpx 36rpx 24rpx 24rpx;
+  padding: 24rpx 20rpx;
+  box-shadow: 0 6rpx 18rpx rgba(15, 23, 42, 0.04);
+}
+
+.bus-front-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14rpx 20rpx;
+  background-color: #F8FAFC;
+  border: 2rpx dashed #CBD5E1;
+  border-radius: 20rpx;
+  margin-bottom: 24rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+  color: #475569;
+}
+
+.aisle-label {
+  font-size: 20rpx;
+  color: #94A3B8;
+}
+
+.standard-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
+.bus-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.seat-pair {
+  display: flex;
+  gap: 12rpx;
+}
+
+.row-index-badge {
+  font-size: 20rpx;
+  color: #94A3B8;
+  font-weight: 500;
+  min-width: 78rpx;
+  text-align: center;
+}
+
+.seat-cell {
+  width: 112rpx;
+  height: 88rpx;
+  border-radius: 14rpx;
+  border: 2rpx solid #CBD5E1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  transition: all 0.12s ease;
+}
+
+.seat-cell:active {
+  transform: scale(0.95);
+}
+
+.seat-no {
+  font-size: 26rpx;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.seat-tag {
+  font-size: 19rpx;
+  margin-top: 4rpx;
+  line-height: 1.1;
+}
+
+.seat--available {
+  background-color: var(--seat-available-bg, #FFFFFF);
+  border-color: var(--seat-available-border, #CBD5E1);
+  color: var(--seat-available-fg, #0F172A);
+}
+
+.seat--selected {
+  background-color: var(--seat-selected-bg, #0D9488);
+  border-color: #0F766E;
+  color: var(--seat-selected-fg, #FFFFFF);
+  box-shadow: 0 4rpx 12rpx rgba(13, 148, 136, 0.28);
+}
+
+.seat--locked {
+  background-color: var(--seat-locked-bg, #FEF3C7);
+  border-color: var(--seat-locked-border, #F59E0B);
+  color: var(--seat-locked-fg, #92400E);
+}
+
+.seat--sold {
+  background-color: var(--seat-sold-bg, #E4E4E7);
+  border-color: #D4D4D8;
+  color: var(--seat-sold-fg, #71717A);
+}
+
+.seat--reserved {
+  background-color: var(--seat-reserved-bg, #EDE9FE);
+  border-color: var(--seat-reserved-border, #C4B5FD);
+  color: var(--seat-reserved-fg, #6D28D9);
+}
+
+.back-row-wrapper {
+  margin-top: 26rpx;
+  padding-top: 20rpx;
+  border-top: 2rpx dashed #E2E8F0;
+}
+
+.back-row-title {
+  text-align: center;
+  font-size: 21rpx;
+  color: #64748B;
+  font-weight: 600;
+  margin-bottom: 14rpx;
+}
+
+.back-row-seats {
+  display: flex;
+  justify-content: space-between;
+  gap: 10rpx;
+}
+
+.seat-cell--back {
+  flex: 1;
+  width: auto;
+}

@@ -1,0 +1,26 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/bus/seat-select/index",
+    "pages/order/detail/index",
+    "pages/admin/dashboard/index"
+  ],
+  "usingComponents": {
+    "ui-button": "/components/ui/button/index",
+    "ui-input": "/components/ui/input/index",
+    "ui-card": "/components/ui/card/index",
+    "ui-badge": "/components/ui/badge/index",
+    "ui-tabs": "/components/ui/tabs/index",
+    "ui-alert": "/components/ui/alert/index",
+    "bus-seat-grid": "/components/bus-seat-grid/index"
+  },
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#0F766E",
+    "navigationBarTitleText": "潮州同乡会返乡大巴",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#F8FAFC"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

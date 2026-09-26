@@ -1,0 +1,151 @@
+<view class="container">
+  <!-- 顶部身份演示切换器 + 管理后台快捷入口 -->
+  <view class="top-bar">
+    <view class="switcher-header">
+      <text class="section-caption">👥 演示学友身份切换（可测试多用户并发抢座）</text>
+      <ui-button variant="outline" size="sm" bind:click="goToAdminDashboard">
+        🛡️ 领队检票/管理端
+      </ui-button>
+    </view>
+    <ui-tabs
+      options="{{profileTabOptions}}"
+      value="{{currentProfile.openid}}"
+      variant="segmented"
+      bind:change="handleProfileSwitch"
+    />
+  </view>
+
+  <!-- 顶部进行中订单提醒横幅 -->
+  <view wx:if="{{activeOrderBanner}}" class="banner-section">
+    <ui-alert
+      variant="{{activeOrderBanner.variant}}"
+      title="{{activeOrderBanner.title}}"
+      description="{{activeOrderBanner.description}}"
+      actionText="查看凭单"
+      bind:action="goToActiveOrder"
+    />
+  </view>
+
+  <!-- 近期发车班次列表 -->
+  <view class="section-header">
+    <text class="section-title">🚌 近期潮州同乡大巴班次</text>
+    <text class="section-sub">共 {{schedules.length}} 趟 · 单人单班次限购 2 座</text>
+  </view>
+
+  <view wx:if="{{schedules.length === 0}}" class="empty-block">
+    <ui-card title="暂无排班计划" subtitle="同乡会领队正在筹备班次，可先在下方登记返乡意向">
+      <ui-button variant="outline" size="md" block="{{true}}" bind:click="goToAdminDashboard">
+        我是领队，立即发布首趟班次
+      </ui-button>
+    </ui-card>
+  </view>
+
+  <block wx:for="{{schedules}}" wx:key="id">
+    <ui-card>
+      <view class="schedule-top">
+        <view>
+          <view class="schedule-title">{{item.title}}</view>
+          <view class="schedule-time">🕒 发车时间：{{item.formattedDepartureTime}}</view>
+        </view>
+        <ui-badge variant="{{item.remaining_seats > 5 ? 'brand' : 'warning'}}">
+          余 {{item.remaining_seats}} 座
+        </ui-badge>
+      </view>
+
+      <view class="station-route-row">
+        <view class="route-pill">
+          <text class="route-tag route-tag--up">上车点</text>
+          <text class="route-names">{{item.pickupText}}</text>
+        </view>
+        <view class="route-pill">
+          <text class="route-tag route-tag--down">下车点</text>
+          <text class="route-names">{{item.dropoffText}}</text>
+        </view>
+      </view>
+
+      <view class="schedule-footer">
+        <view class="price-box">
+          <text class="price-symbol">¥</text>
+          <text class="price-value">{{item.priceYuan}}</text>
+          <text class="price-unit">/人 · 53座豪华大巴</text>
+        </view>
+        <view class="schedule-actions">
+          <ui-button
+            wx:if="{{item.myOrderId}}"
+            variant="secondary"
+            size="sm"
+            data-order-id="{{item.myOrderId}}"
+            bind:click="handleViewMyOrder"
+          >
+            我的车票
+          </ui-button>
+          <ui-button
+            variant="default"
+            size="sm"
+            data-schedule-id="{{item.id}}"
+            bind:click="handleSelectSeat"
+          >
+            立即选座
+          </ui-button>
+        </view>
+      </view>
+    </ui-card>
+  </block>
+
+  <!-- 返乡意向统计与加车征集 -->
+  <view class="section-header" style="margin-top: 20rpx;">
+    <text class="section-title">📋 返乡意向摸底登记（满45人加开专车）</text>
+  </view>
+
+  <ui-card
+    title="还没合适的发车时段？"
+    subtitle="登记您的期望出发日期、校区上车点与潮州下车点，帮助同乡会精准调度大巴"
+  >
+    <ui-input
+      label="期望出发日期"
+      placeholder="例如 2026-10-01"
+      value="{{intentionForm.expected_date}}"
+      bind:input="onIntentionDateInput"
+    />
+
+    <view class="field-group">
+      <view class="field-label">期望上车站点</view>
+      <ui-tabs
+        options="{{pickupOptions}}"
+        value="{{intentionForm.preferred_pickup_station}}"
+        variant="pills"
+        bind:change="onIntentionPickupChange"
+      />
+    </view>
+
+    <view class="field-group">
+      <view class="field-label">期望潮州下车点</view>
+      <ui-tabs
+        options="{{dropoffOptions}}"
+        value="{{intentionForm.preferred_dropoff_station}}"
+        variant="pills"
+        bind:change="onIntentionDropoffChange"
+      />
+    </view>
+
+    <view class="field-group">
+      <view class="field-label">同行人数</view>
+      <ui-tabs
+        options="{{seatCountOptions}}"
+        value="{{intentionForm.seat_count}}"
+        variant="segmented"
+        bind:change="onIntentionCountChange"
+      />
+    </view>
+
+    <ui-button
+      variant="secondary"
+      block="{{true}}"
+      debounceMs="1200"
+      loading="{{submittingIntention}}"
+      bind:click="submitIntention"
+    >
+      提交返乡意向登记
+    </ui-button>
+  </ui-card>
+</view>
