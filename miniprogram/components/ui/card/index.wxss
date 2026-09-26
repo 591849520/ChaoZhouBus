@@ -1,0 +1,46 @@
+.ui-card {
+  background-color: #FFFFFF;
+  border: 2rpx solid #E4E4E7;
+  border-radius: 18rpx;
+  padding: 28rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 10rpx rgba(9, 9, 11, 0.04);
+}
+
+.ui-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 20rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 2rpx solid #F4F4F5;
+}
+
+.ui-card__title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #09090B;
+  line-height: 1.35;
+}
+
+.ui-card__desc {
+  font-size: 24rpx;
+  color: #71717A;
+  margin-top: 6rpx;
+}
+
+.ui-card__content {
+  font-size: 28rpx;
+  color: #18181B;
+}
+
+.ui-card__footer:empty {
+  display: none;
+}
+
+.ui-card__footer {
+  margin-top: 22rpx;
+  padding-top: 18rpx;
+  border-top: 2rpx solid #F4F4F5;
+}

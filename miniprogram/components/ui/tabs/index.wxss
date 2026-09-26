@@ -1,0 +1,63 @@
+.ui-tabs--segmented {
+  display: inline-flex;
+  width: 100%;
+  box-sizing: border-box;
+  background-color: var(--muted, #F4F4F5);
+  padding: 6rpx;
+  border-radius: var(--radius-md, 14rpx);
+  gap: 6rpx;
+}
+
+.ui-tabs--segmented .ui-tabs__item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14rpx 18rpx;
+  border-radius: var(--radius-sm, 10rpx);
+  font-size: 24rpx;
+  font-weight: 500;
+  color: var(--muted-fg, #71717A);
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.ui-tabs--segmented .ui-tabs__item--active {
+  background-color: var(--card, #FFFFFF);
+  color: var(--fg, #09090B);
+  font-weight: 600;
+  box-shadow: 0 2rpx 6rpx rgba(9, 9, 11, 0.08);
+}
+
+.ui-tabs--pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.ui-tabs--pills .ui-tabs__item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12rpx 24rpx;
+  border-radius: var(--radius-full, 9999rpx);
+  background-color: var(--card, #FFFFFF);
+  border: 2rpx solid var(--border, #E4E4E7);
+  font-size: 24rpx;
+  font-weight: 500;
+  color: var(--fg, #09090B);
+  transition: all 0.15s ease;
+}
+
+.ui-tabs--pills .ui-tabs__item--active {
+  background-color: var(--brand, #0D9488);
+  border-color: var(--brand, #0D9488);
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+.ui-tabs__count {
+  margin-left: 6rpx;
+  font-size: 22rpx;
+  opacity: 0.85;
+}

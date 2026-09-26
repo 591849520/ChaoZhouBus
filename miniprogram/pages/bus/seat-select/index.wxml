@@ -1,0 +1,103 @@
+<view class="container seat-select-page">
+  <!-- 顶部班次概要卡片 -->
+  <ui-card wx:if="{{schedule}}" title="{{schedule.title}}" subtitle="发车时间：{{formattedDepartureTime}} · 单人单班次限购 2 座">
+    <view class="quota-row">
+      <ui-badge variant="brand">票价 ¥{{unitPriceYuan}}/座</ui-badge>
+      <ui-badge variant="{{remainingQuota > 0 ? 'success' : 'warning'}}">
+        当前账号剩余可订 {{remainingQuota}} 座
+      </ui-badge>
+    </view>
+  </ui-card>
+
+  <!-- 已有进行中订单提醒 -->
+  <view wx:if="{{myActiveOrder}}" class="active-order-tip">
+    <ui-alert
+      variant="warning"
+      title="您在该班次已有订单（{{myActiveOrder.status === 'PAID' ? '已支付' : '待支付'}}）"
+      description="已占 {{myActiveOrder.items.length}} 座，点击右侧可查看凭单或继续支付"
+      actionText="查看订单"
+      bind:action="goToExistingOrder"
+    />
+  </view>
+
+  <!-- 53座双侧大巴座位网格组件 -->
+  <bus-seat-grid
+    standardRows="{{standardRows}}"
+    backRow="{{backRow}}"
+    bind:selectSeat="handleSeatSelect"
+  />
+
+  <!-- 选中座位后的乘车人与站点信息填写卡片 -->
+  <view wx:if="{{selectedList.length > 0}}" class="passenger-form-area">
+    <view class="section-label">✍️ 填写乘车人及上下车站点（已选 {{selectedList.length}} 座）</view>
+
+    <block wx:for="{{selectedList}}" wx:key="seat_number">
+      <ui-card title="💺 {{item.seat_number}} 号座乘车人" badgeText="第 {{index + 1}} 位" badgeVariant="brand">
+        <ui-input
+          label="乘车人真实姓名"
+          placeholder="请输入姓名（用于现场点名检票）"
+          value="{{item.passenger_name}}"
+          data-index="{{index}}"
+          bind:input="onPassengerNameInput"
+        />
+
+        <ui-input
+          label="联系手机号"
+          type="number"
+          maxlength="11"
+          placeholder="请输入 11 位手机号码（用于领队一键联系）"
+          value="{{item.passenger_phone}}"
+          data-index="{{index}}"
+          bind:input="onPassengerPhoneInput"
+        />
+
+        <view class="station-pick-group">
+          <view class="station-pick-label">📍 选择高校上车站点</view>
+          <ui-tabs
+            options="{{pickupTabOptions}}"
+            value="{{item.pickup_station}}"
+            variant="pills"
+            data-index="{{index}}"
+            bind:change="onPassengerPickupChange"
+          />
+        </view>
+
+        <view class="station-pick-group">
+          <view class="station-pick-label">🏁 选择潮州预选下车点</view>
+          <ui-tabs
+            options="{{dropoffTabOptions}}"
+            value="{{item.dropoff_station}}"
+            variant="pills"
+            data-index="{{index}}"
+            bind:change="onPassengerDropoffChange"
+          />
+        </view>
+      </ui-card>
+    </block>
+  </view>
+
+  <!-- 底部固定结算与 1500ms 防抖原子锁座栏 -->
+  <view class="sticky-bottom-bar">
+    <view class="summary-col">
+      <view class="summary-seats">
+        {{selectedList.length > 0 ? '已选座位：' + selectedSeatsText : '请点击上方可选座位（最多2座）'}}
+      </view>
+      <view class="summary-price">
+        合计：<text class="total-amount">¥{{totalAmountYuan}}</text>
+        <text class="lock-hint">（锁座保留 300 秒）</text>
+      </view>
+    </view>
+    <view class="submit-col">
+      <ui-button
+        variant="default"
+        size="md"
+        disabled="{{selectedList.length === 0}}"
+        loading="{{submittingLock}}"
+        debounceMs="1500"
+        bind:click="handleSubmitLock"
+      >
+        立即锁座下单
+      </ui-button>
+    </view>
+  </view>
+</view>

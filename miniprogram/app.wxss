@@ -1,0 +1,86 @@
+/**
+ * 全局样式与 shadcn/ui (Zinc + Chaozhou Teal) 视觉令牌定义
+ */
+page {
+  --background: #F8FAFC;
+  --foreground: #09090B;
+  --card: #FFFFFF;
+  --card-foreground: #09090B;
+  --primary: #0F766E;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F4F4F5;
+  --secondary-foreground: #18181B;
+  --muted: #F4F4F5;
+  --muted-foreground: #71717A;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --success: #16A34A;
+  --warning: #D97706;
+  --border: #E4E4E7;
+  --input: #E4E4E7;
+  --ring: #0F766E;
+  --radius: 16rpx;
+
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 28rpx;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.page-shell {
+  padding: 24rpx;
+  padding-bottom: 160rpx;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.flex-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16rpx;
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+  font-size: 24rpx;
+}
+
+.text-price {
+  color: var(--primary);
+  font-size: 36rpx;
+  font-weight: 700;
+}
+
+.mb-16 {
+  margin-bottom: 16rpx;
+}
+
+.mb-24 {
+  margin-bottom: 24rpx;
+}
+
+.mt-16 {
+  margin-top: 16rpx;
+}
+
+.mt-24 {
+  margin-top: 24rpx;
+}

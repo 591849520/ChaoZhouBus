@@ -1,0 +1,146 @@
+.top-bar {
+  margin-bottom: 24rpx;
+}
+
+.switcher-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14rpx;
+}
+
+.section-caption {
+  font-size: 23rpx;
+  color: var(--muted-fg, #71717A);
+  font-weight: 600;
+}
+
+.banner-section {
+  margin-bottom: 24rpx;
+}
+
+.section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 12rpx 4rpx 18rpx;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: var(--fg, #09090B);
+}
+
+.section-sub {
+  font-size: 22rpx;
+  color: var(--muted-fg, #71717A);
+}
+
+.schedule-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 18rpx;
+}
+
+.schedule-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: var(--fg, #09090B);
+  margin-bottom: 6rpx;
+}
+
+.schedule-time {
+  font-size: 24rpx;
+  color: var(--brand, #0D9488);
+  font-weight: 600;
+}
+
+.station-route-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+  padding: 18rpx 20rpx;
+  background-color: #F8FAFC;
+  border-radius: 16rpx;
+  margin-bottom: 22rpx;
+}
+
+.route-pill {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  font-size: 24rpx;
+}
+
+.route-tag {
+  font-size: 20rpx;
+  font-weight: 700;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  white-space: nowrap;
+}
+
+.route-tag--up {
+  background-color: #CCFBF1;
+  color: #0F766E;
+}
+
+.route-tag--down {
+  background-color: #E0E7FF;
+  color: #3730A3;
+}
+
+.route-names {
+  color: #334155;
+  font-weight: 500;
+}
+
+.schedule-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 16rpx;
+  border-top: 1rpx solid var(--border, #E4E4E7);
+}
+
+.price-box {
+  display: flex;
+  align-items: baseline;
+}
+
+.price-symbol {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #0F766E;
+}
+
+.price-value {
+  font-size: 42rpx;
+  font-weight: 800;
+  color: #0F766E;
+  margin: 0 4rpx;
+}
+
+.price-unit {
+  font-size: 22rpx;
+  color: var(--muted-fg, #71717A);
+}
+
+.schedule-actions {
+  display: flex;
+  gap: 12rpx;
+}
+
+.field-group {
+  margin-bottom: 24rpx;
+}
+
+.field-label {
+  font-size: 25rpx;
+  font-weight: 600;
+  color: var(--fg, #09090B);
+  margin-bottom: 12rpx;
+}

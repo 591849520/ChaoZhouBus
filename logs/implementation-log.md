@@ -48,3 +48,15 @@
   - `npm run typecheck`（`tsc --noEmit`）零错误。
   - `npm test`：`[✓] src/app.test.ts (729ms)`、`[✓] src/services/roster-export.test.ts (95ms)`、`[✓] src/services/seat-lock.test.ts (35ms)`，3 项测试套件 100% 通过（总耗时 `860ms`）。
 - **回退方式**：`git reset --hard ff60d10`。
+
+## 2026-09-26T20:54:00+08:00 — 完成 Phase 3 (`feat/miniprogram`) `shadcn/ui` 组件化微信小程序前端与自动化测试
+- **触发依据**：用户指定参考 `https://ui.shadcn.com/` 构建高复用、组件化的小程序前端，并回复“批准”授权执行 Phase 3 方案。
+- **执行动作**：
+  - 在 `miniprogram/app.wxss` 建立 `shadcn/ui` Zinc + Teal 设计变量体系，并在 `miniprogram/app.json` 全局注册 7 个高复用组件。
+  - 实现 6 个通用 UI 原语组件（`<ui-button>` 内置防抖与变体、`<ui-input>`、`<ui-card>`、`<ui-badge>`、`<ui-tabs>`、`<ui-alert>`）与 1 个领域组件（`<bus-seat-grid>` 53座双侧 2+2 及车尾 5 连座）。
+  - 组合上述组件完成 4 个业务页面：`pages/index/index`（班次列表/账号切换/意向登记）、`pages/bus/seat-select/index`（53座选座/首位乘车人自动回填/1500ms防抖锁座）、`pages/order/detail/index`（300s本地零轮询倒计时/6位检票码+Canvas二维码/阶梯退票预览）、`pages/admin/dashboard/index`（实时大盘/按站点与未到过滤/一键拨号/扫码与输码核验/导出并打开双Sheet A4 Excel名册）。
+  - 新增 `server/src/services/miniprogram-layout.test.ts`。
+- **外部验证证据**：
+  - 初测捕获 `seat-helper.js` 的 `cssClass` 与 ISO 日期兼容细节，修复后复测 `npm run typecheck` 零错误，`npm test` 4 个测试套件全部通过（`app.test.ts`、`miniprogram-layout.test.ts`、`roster-export.test.ts`、`seat-lock.test.ts`，总耗时 `843ms`）。
+- **回退方式**：当前处于 `feat/miniprogram` 分支，遵循 `AGENTS.md` 铁律第 8 条未执行 `git commit` / `git push`，可通过 `git checkout main` 无损回退。
+

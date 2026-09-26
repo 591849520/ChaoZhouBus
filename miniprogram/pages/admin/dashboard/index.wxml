@@ -1,0 +1,182 @@
+<view class="container">
+  <!-- 顶部班次切换与发布新班次开关 -->
+  <view class="admin-top-row">
+    <view class="admin-heading">🛡️ 领队现场检票与大盘</view>
+    <ui-button variant="outline" size="sm" bind:click="toggleCreateForm">
+      {{showCreateForm ? '收起排班表单' : '➕ 发布新班次'}}
+    </ui-button>
+  </view>
+
+  <!-- 班次选择 Tabs -->
+  <view wx:if="{{scheduleTabOptions.length > 0}}" class="schedule-tabs-box">
+    <ui-tabs
+      options="{{scheduleTabOptions}}"
+      value="{{selectedScheduleId}}"
+      variant="pills"
+      bind:change="handleScheduleSwitch"
+    />
+  </view>
+
+  <!-- 发布新班次折叠卡片 -->
+  <ui-card
+    wx:if="{{showCreateForm}}"
+    title="➕ 发布 53 座潮州同乡大巴新班次"
+    subtitle="创建后自动生成 01~53 号座位（01、02 号默认设为同乡会领队留座）"
+  >
+    <ui-input
+      label="班次名称"
+      placeholder="例如：2026国庆潮州返乡专车（A车）"
+      value="{{createForm.title}}"
+      bind:input="onCreateTitleInput"
+    />
+    <ui-input
+      label="发车时间（ISO 格式）"
+      placeholder="例如：2026-10-01T08:30:00+08:00"
+      value="{{createForm.departure_time}}"
+      bind:input="onCreateTimeInput"
+    />
+    <ui-input
+      label="单座票价（元）"
+      type="number"
+      placeholder="例如：65"
+      value="{{createForm.price_yuan}}"
+      bind:input="onCreatePriceInput"
+    />
+    <ui-button
+      variant="default"
+      block="{{true}}"
+      loading="{{creatingSchedule}}"
+      debounceMs="1200"
+      bind:click="handleCreateSchedule"
+    >
+      确认发布 53 座新班次
+    </ui-button>
+  </ui-card>
+
+  <!-- 实时售票与检票签到统计大盘 -->
+  <view wx:if="{{stats}}" class="stats-grid">
+    <view class="stat-box">
+      <text class="stat-num stat-num--brand">{{stats.sold_count}}</text>
+      <text class="stat-label">已售出座位</text>
+    </view>
+    <view class="stat-box">
+      <text class="stat-num stat-num--success">{{stats.checked_in_count}}</text>
+      <text class="stat-label">已签到上车</text>
+    </view>
+    <view class="stat-box">
+      <text class="stat-num stat-num--warning">{{stats.unchecked_in_count}}</text>
+      <text class="stat-label">未到待催促</text>
+    </view>
+    <view class="stat-box">
+      <text class="stat-num">{{stats.available_count}}</text>
+      <text class="stat-label">剩余可售座</text>
+    </view>
+  </view>
+
+  <!-- 现场领队高频操作栏：扫码检票 + 6位检票码核验 + 导出A4名册 -->
+  <ui-card title="⚡ 现场检票与纸质 A4 名册导出" subtitle="支持摄像头扫码、输入 6 位数字检票码或直接点击下方名单核验">
+    <view class="code-verify-row">
+      <view class="code-input-col">
+        <ui-input
+          placeholder="输入乘车人 6 位数字检票码"
+          type="number"
+          maxlength="6"
+          value="{{manualCheckInCode}}"
+          bind:input="onManualCodeInput"
+        />
+      </view>
+      <view class="code-btn-col">
+        <ui-button
+          variant="default"
+          size="md"
+          debounceMs="800"
+          bind:click="handleVerifyByCode"
+        >
+          核验检票码
+        </ui-button>
+      </view>
+    </view>
+
+    <view class="action-buttons-row">
+      <view class="action-half">
+        <ui-button variant="secondary" block="{{true}}" bind:click="handleScanQrCode">
+          📷 调起相机扫码检票
+        </ui-button>
+      </view>
+      <view class="action-half">
+        <ui-button
+          variant="outline"
+          block="{{true}}"
+          loading="{{exportingExcel}}"
+          debounceMs="1500"
+          bind:click="handleExportExcel"
+        >
+          📄 导出 A4 检票 Excel
+        </ui-button>
+      </view>
+    </view>
+  </ui-card>
+
+  <!-- 站点分组过滤 + 只看未到过滤 -->
+  <view class="filter-section">
+    <view class="filter-header">
+      <text class="section-title">📋 手机端实时点名册（{{passengers.length}} 人）</text>
+      <ui-tabs
+        options="{{statusFilterOptions}}"
+        value="{{onlyUnchecked}}"
+        variant="segmented"
+        bind:change="handleUncheckedFilterChange"
+      />
+    </view>
+
+    <view style="margin-top: 14rpx;">
+      <ui-tabs
+        options="{{stationFilterOptions}}"
+        value="{{selectedPickupStation}}"
+        variant="pills"
+        bind:change="handleStationFilterChange"
+      />
+    </view>
+  </view>
+
+  <!-- 乘车人点名卡片列表（含一键拨号 & 一键签到/撤销） -->
+  <view wx:if="{{passengers.length === 0}}" class="empty-roster">
+    <ui-card title="当前筛选条件下暂无乘客" subtitle="可切换上车站点或选择「全部乘客」查看完整名单" />
+  </view>
+
+  <block wx:for="{{passengers}}" wx:key="seat_number">
+    <ui-card
+      title="💺 {{item.seat_number}} 号座 · {{item.passenger_name}}"
+      subtitle="上车点：{{item.pickup_station}} ➔ 下车点：{{item.dropoff_station}}"
+      badgeText="{{item.checked_in_at ? '✅ 已到' : '⏳ 未到'}}"
+      badgeVariant="{{item.checked_in_at ? 'success' : 'warning'}}"
+    >
+      <view class="passenger-row">
+        <view class="passenger-meta">
+          <view class="phone-line">📱 手机号：{{item.passenger_phone}}</view>
+          <view class="code-line">🔑 检票码：{{item.check_in_code || '--'}}</view>
+        </view>
+        <view class="passenger-actions">
+          <ui-button
+            variant="outline"
+            size="sm"
+            data-phone="{{item.passenger_phone}}"
+            bind:click="handleCallPassenger"
+          >
+            📞 一键拨号
+          </ui-button>
+          <ui-button
+            variant="{{item.checked_in_at ? 'secondary' : 'default'}}"
+            size="sm"
+            debounceMs="600"
+            data-seat="{{item.seat_number}}"
+            data-checked="{{item.checked_in_at ? '1' : '0'}}"
+            bind:click="handleToggleCheckIn"
+          >
+            {{item.checked_in_at ? '撤销签到' : '✅ 确认上车'}}
+          </ui-button>
+        </view>
+      </view>
+    </ui-card>
+  </block>
+</view>
