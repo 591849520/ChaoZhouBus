@@ -1,8 +1,9 @@
 # 当前工作区状态（State）
 
 - **最后更新**：2026-10-02
-- **当前分支**：`feat/production-deploy`（从 `main` @ `ef29ebc` 切出）
-- **基线提交**：`ef29ebc` — `docs: update state and implementation logs for main merge`
+- **当前分支**：`main`（已合并 `feat/production-deploy`，工作区干净）
+- **最新本地提交**：`261111e` — `Merge branch 'feat/production-deploy' into main`
+- **远端状态**：领先 `origin/main` 2 个提交（待用户指令后推送）
 - **已完成阶段**：
   - Phase 0：治理规范、需求规格说明书（`REQUIREMENTS.md`）与全部架构决策（`D-001`~`D-004`）
   - Phase 1：服务端 SQLite WAL 同步事务锁座引擎、50 并发防超卖、300s 惰性超时、按座独立签到码与阶梯退票自愈
