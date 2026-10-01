@@ -18,6 +18,9 @@ server/data/
 .env
 .env.*
 !.env.example
+!*.example
+deploy/data/
+deploy/logs/
 *.pem
 *.key
 

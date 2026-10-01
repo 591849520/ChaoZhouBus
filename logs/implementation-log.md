@@ -104,4 +104,25 @@
   - `npm run typecheck` 零错误；`npm test` 4 项测试套件全部通过（耗时 `1022ms`）。
 - **回退方式**：当前处于 `fix/ui-component-slots-and-props` 分支，遵循 `AGENTS.md` 铁律第 8 条等待用户指令再执行提交与合并。
 
+## 2026-10-02T01:05:00+08:00 — 生产级部署体系、健康探活与 SQLite 原生热备份灾备实现 (`feat/production-deploy`)
+- **触发依据**：用户批准推进【方向一：生产部署与运维准备】，搭建生产部署配置、服务监控探活以及数据灾备防护体系。
+- **实现内容**：
+  1. `server/src/db/backup.ts`：封装 `createDatabaseBackup` 与 `cleanOldBackups`，利用 `better-sqlite3` 原生在线 `.backup()` 引擎实现零停机热快照，并按设定周期（默认 7 天）清理历史过期备份。
+  2. `server/src/app.ts`：新增 `GET /health` 探活端点（返回 uptime、SQLite 连通性、版本）及 `POST /api/v1/admin/backup` 在线手动热备份接口。
+  3. `server/src/config/env.ts`：兼容支持 `LOCK_TTL_SECONDS` 与 `LOCK_TTL_MS` 毫秒/秒级配置。
+  4. `deploy/Dockerfile`：Node.js 20 Alpine 多阶段构建，原生编译 better-sqlite3 C++ 扩展，最终精简镜像 < 150MB。
+  5. `deploy/docker-compose.yml`：持久化存储挂载（`./data`、`./logs`）、环境配置与容器健康检查探活。
+  6. `deploy/nginx/chaozhoubus.conf`：强制 HTTPS 301 重定向、Certbot ACME 证书自动化、反向代理、真实 IP 穿透、抢票接口限流（20r/s，突发 40r/s）与 `/health` 探活免限流。
+  7. `deploy/backup-sqlite.sh`：自动化热备份与 7 天过期清理 shell 脚本，支持 Crontab 定时与手动执行。
+  8. `deploy/ecosystem.config.cjs`：PM2 单实例（instances: 1）进程守护配置，避免跨进程文件锁竞争。
+  9. `deploy/.env.production.example`：全量生产环境变量模板。
+  10. `deploy/README.md`：10 分钟快速上线、SSL 申请与 30 秒极速灾备恢复手册。
+  11. `server/src/db/backup.test.ts` & `server/src/app.test.ts`：编写完整备份创建与数据还原校验、7 天历史快照过期清理单测，以及 `/health` 与管理端热备份端点测试。
+- **外部验证证据**：
+  - `npm run typecheck` 零错误；
+  - `npm test` 5 项测试套件全部通过（耗时 `972ms`）；
+  - `npm run build` 成功完成 TypeScript 编译输出 `server/dist/`。
+- **回退方式**：当前处于 `feat/production-deploy` 分支，严格遵循 `AGENTS.md` 铁律第 8 条，绝不自动执行 `git commit` 或 `git push`，展示全部验证结果等待用户审查与下一步指令。
+
+
 

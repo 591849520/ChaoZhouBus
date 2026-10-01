@@ -16,6 +16,23 @@ export default async function run() {
   const studentHeaders = { 'x-wx-openid': 'wx_e2e_student_001' }
 
   try {
+    // 0. GET /health 探活检查
+    const healthRes = await app.inject({
+      method: 'GET',
+      url: '/health',
+    })
+    assert.equal(healthRes.statusCode, 200)
+    const healthData = healthRes.json() as {
+      status: string
+      db_status: string
+      uptime_seconds: number
+      version: string
+    }
+    assert.equal(healthData.status, 'ok')
+    assert.equal(healthData.db_status, 'connected')
+    assert.equal(healthData.version, '0.1.0')
+    assert.ok(healthData.uptime_seconds >= 0)
+
     // 1. 学生提交返乡乘车意向
     const intentRes = await app.inject({
       method: 'POST',
@@ -171,6 +188,26 @@ export default async function run() {
       if (fs.existsSync(tmpLogPath)) {
         fs.unlinkSync(tmpLogPath)
       }
+    }
+
+    // 11. 验证 POST /api/v1/admin/backup 手动触发在线热备份
+    const backupRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/admin/backup',
+      headers: adminHeaders,
+    })
+    assert.equal(backupRes.statusCode, 200)
+    const backupData = (backupRes.json() as {
+      data: { backupFile: string; backupPath: string; backupSize: number }
+    }).data
+    assert.ok(backupData.backupFile.startsWith('chaozhoubus_backup_'))
+    assert.ok(fs.existsSync(backupData.backupPath))
+    assert.ok(backupData.backupSize > 0)
+    // 清理本次测试生成的备份文件
+    try {
+      fs.unlinkSync(backupData.backupPath)
+    } catch (_err) {
+      // 忽略清理异常
     }
   } finally {
     await app.close()

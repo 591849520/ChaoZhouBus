@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  chaozhou-bus-server:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: chaozhou-bus-server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=3000
+      - SQLITE_DB_PATH=data/chaozhoubus.db
+      - ADMIN_SECRET_TOKEN=${ADMIN_SECRET_TOKEN:-chaozhou_admin_prod_secret_token_2026}
+      - LOCK_TTL_MS=300000
+      - MAX_SEATS_PER_USER=2
+      - TZ=Asia/Shanghai
+    volumes:
+      # 持久化存储：数据库文件、WAL 日志与自动备份快照挂载到宿主机当前目录的 data/ 中
+      - ./data:/app/server/data
+      # 实时业务日志挂载到宿主机当前目录的 logs/ 中
+      - ./logs:/app/server/logs
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
