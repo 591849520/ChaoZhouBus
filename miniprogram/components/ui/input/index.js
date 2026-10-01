@@ -7,22 +7,26 @@ Component({
     maxlength: { type: Number, value: 140 },
     required: { type: Boolean, value: false },
     disabled: { type: Boolean, value: false },
-    error: { type: String, value: '' }
+    error: { type: String, value: '' },
   },
 
   data: {
-    focused: false
+    focused: false,
   },
 
   methods: {
     onInput(e) {
-      this.triggerEvent('change', { value: e.detail.value })
+      const payload = { value: e.detail.value };
+      this.triggerEvent('input', payload);
+      this.triggerEvent('change', payload);
     },
-    onFocus() {
-      this.setData({ focused: true })
+    onFocus(e) {
+      this.setData({ focused: true });
+      this.triggerEvent('focus', e.detail);
     },
-    onBlur() {
-      this.setData({ focused: false })
-    }
-  }
-})
+    onBlur(e) {
+      this.setData({ focused: false });
+      this.triggerEvent('blur', e.detail);
+    },
+  },
+});

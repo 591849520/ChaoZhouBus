@@ -125,6 +125,33 @@ for (const pageRel of appJson.pages) {
   }
 }
 
+// 4.1 验证基础组件事件分发完备性（ui-button 同时分发 click 与 action，ui-input 同时分发 input 与 change）
+const buttonJsSource = fs.readFileSync(
+  path.join(miniprogramRoot, 'components/ui/button/index.js'),
+  'utf8'
+);
+assert.ok(
+  buttonJsSource.includes("triggerEvent('click'"),
+  'ui-button must dispatch click event for bind:click listeners'
+);
+assert.ok(
+  buttonJsSource.includes("triggerEvent('action'"),
+  'ui-button must dispatch action event for bind:action listeners'
+);
+
+const inputJsSource = fs.readFileSync(
+  path.join(miniprogramRoot, 'components/ui/input/index.js'),
+  'utf8'
+);
+assert.ok(
+  inputJsSource.includes("triggerEvent('input'"),
+  'ui-input must dispatch input event for bind:input listeners'
+);
+assert.ok(
+  inputJsSource.includes("triggerEvent('change'"),
+  'ui-input must dispatch change event for bind:change listeners'
+);
+
 // 5. 前后端端到端契约回归测试（模拟小程序各页面真实 Payload 打入 Fastify app.inject）
 async function runContractIntegrationTest() {
   const db = new Database(':memory:');
