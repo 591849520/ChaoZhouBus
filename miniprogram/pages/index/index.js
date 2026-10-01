@@ -149,14 +149,20 @@ Page({
   },
 
   handleSelectSeat(e) {
-    const scheduleId = e.currentTarget.dataset.scheduleId;
+    const scheduleId =
+      (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.scheduleId) ||
+      (e && e.detail && (e.detail.scheduleId || e.detail['schedule-id'])) ||
+      (this.data.schedules && this.data.schedules[0] && this.data.schedules[0].id) ||
+      1;
     wx.navigateTo({
       url: `/pages/bus/seat-select/index?scheduleId=${scheduleId}`,
     });
   },
 
   handleViewMyOrder(e) {
-    const orderId = e.currentTarget.dataset.orderId;
+    const orderId =
+      (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.orderId) ||
+      (e && e.detail && (e.detail.orderId || e.detail['order-id']));
     if (!orderId) return;
     wx.navigateTo({
       url: `/pages/order/detail/index?orderId=${orderId}`,

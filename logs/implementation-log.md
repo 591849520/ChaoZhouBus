@@ -82,4 +82,15 @@
   - `npm run typecheck` 零错误；`npm test` 4 项测试套件全部通过（耗时 `1281ms`），并验证了临时测试日志文件的生成与内容。
 - **回退方式**：当前分支为 `feat/server-logging`，未执行 `git commit` / `git push`，遵循 `AGENTS.md` 铁律第 8 条暂停等待用户批准。
 
+## 2026-10-01T21:52:00+08:00 — 修复 `<ui-button>` 与 `<ui-input>` 自定义组件事件分发与参数透传 (`fix/component-event-dispatch`)
+- **触发依据**：用户在微信开发者工具模拟器中点击“立即选座”无反应，排查发现 `<ui-button>` 内部只触发了 `'action'` 事件，而外部页面绑定的是 `bind:click`，导致点击未响应。
+- **修复内容**：
+  1. `miniprogram/components/ui/button/index.js`：点击时同时分发 `'click'` 与 `'action'`，并将 `this.dataset` 透传进 `e.detail`。
+  2. `miniprogram/components/ui/input/index.js`：输入时同时分发 `'input'` 与 `'change'`，确保页面 `bind:input` 正常获取 `{ value }`。
+  3. `miniprogram/pages/index/index.js` & `pages/admin/dashboard/index.js`：兼容从 `e.currentTarget.dataset`、`e.detail` 及保底数据中提取 `scheduleId`、`orderId`、`phone`、`seat`。
+  4. `server/src/services/miniprogram-layout.test.ts`：增加第 4.1 步静态断言，强制保证 `ui-button` 必须分发 `click`/`action`，`ui-input` 必须分发 `input`/`change`。
+- **外部验证证据**：
+  - `npm run typecheck` 零错误；`npm test` 4 项测试套件全部通过（耗时 `938ms`）。
+- **回退方式**：当前处于 `fix/component-event-dispatch` 分支，遵循 `AGENTS.md` 铁律第 8 条等待用户指令再执行提交与合并。
+
 

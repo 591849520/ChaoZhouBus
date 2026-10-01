@@ -197,8 +197,15 @@ Page({
   },
 
   async handleToggleCheckIn(e) {
-    const seatNumber = String(e.currentTarget.dataset.seat || '');
-    const currentlyChecked = e.currentTarget.dataset.checked === '1';
+    const seatNumber = String(
+      (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.seat) ||
+      (e && e.detail && e.detail.seat) ||
+      ''
+    );
+    const checkedVal =
+      (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.checked) ||
+      (e && e.detail && e.detail.checked);
+    const currentlyChecked = checkedVal === '1' || checkedVal === 1 || checkedVal === true;
 
     try {
       await api.post(`/api/v1/admin/schedules/${this.data.selectedScheduleId}/check-in`, {
@@ -216,7 +223,11 @@ Page({
   },
 
   handleCallPassenger(e) {
-    const phone = String(e.currentTarget.dataset.phone || '');
+    const phone = String(
+      (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.phone) ||
+      (e && e.detail && e.detail.phone) ||
+      ''
+    );
     if (!phone) return;
     wx.makePhoneCall({
       phoneNumber: phone,
