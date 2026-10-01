@@ -11,8 +11,14 @@ async function startServer() {
     fs.mkdirSync(dbDir, { recursive: true })
   }
 
+  const logFilePath = path.resolve(process.cwd(), 'server.log')
   const db = new Database(dbFullPath)
-  const { app, seatService } = buildApp({ db, config: appConfig })
+  const { app, seatService } = buildApp({
+    db,
+    config: appConfig,
+    enableLogging: true,
+    logFilePath,
+  })
 
   // 若本地数据库中尚无班次，自动创建一个默认的潮州返乡测试班次（53 座）方便微信开发者工具直接联调
   const existing = seatService.listSchedules()
@@ -31,6 +37,7 @@ async function startServer() {
 
   await app.listen({ port: appConfig.port, host: appConfig.host })
   console.log(`🚌 ChaoZhouBus 服务端已启动: http://localhost:${appConfig.port}`)
+  console.log(`📋 实时请求日志与业务记录同步输出至终端控制台，并保存于: ${logFilePath}`)
 }
 
 startServer().catch((err) => {

@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import cors from '@fastify/cors'
 import Database from 'better-sqlite3'
 import Fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
@@ -11,6 +12,27 @@ import { BusDomainError } from './types/domain.js'
 export interface BuildAppOptions {
   db?: Database.Database
   config?: AppConfig
+  enableLogging?: boolean
+  logFilePath?: string
+}
+
+function formatLogTime(d = new Date()): string {
+  const pad = (n: number, len = 2) => String(n).padStart(len, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+function createLogger(enableLogging?: boolean, logFilePath?: string) {
+  return function logLine(message: string): void {
+    if (!enableLogging) return
+    console.log(message)
+    if (logFilePath) {
+      try {
+        fs.appendFileSync(logFilePath, `${message}\n`, 'utf8')
+      } catch (_err) {
+        // 忽略日志文件追加异常
+      }
+    }
+  }
 }
 
 const intentionBodySchema = z.object({
@@ -112,24 +134,51 @@ export function buildApp(options?: BuildAppOptions): {
   })
   const rosterService = new RosterAndAdminService(db, seatService)
 
+  const enableLogging = Boolean(options?.enableLogging)
+  const logFilePath = options?.logFilePath
+  const log = createLogger(enableLogging, logFilePath)
+  const reqStartTimes = new WeakMap<FastifyRequest, number>()
+
   const app = Fastify({ logger: false })
   void app.register(cors, { origin: true })
 
+  if (enableLogging) {
+    app.addHook('onRequest', async (req) => {
+      reqStartTimes.set(req, Date.now())
+      const openid = resolveOpenid(req)
+      log(`📥 [${formatLogTime()}] --> ${req.method} ${req.url} | openid: ${openid}`)
+    })
+
+    app.addHook('onResponse', async (req, reply) => {
+      const start = reqStartTimes.get(req) ?? Date.now()
+      const duration = Date.now() - start
+      const status = reply.statusCode
+      const icon = status < 400 ? '📤' : status < 500 ? '⚠️' : '❌'
+      log(`${icon} [${formatLogTime()}] <-- ${req.method} ${req.url} ${status} (${duration}ms)`)
+    })
+  }
+
   // 统一错误拦截器
-  app.setErrorHandler((error, _req, reply: FastifyReply) => {
+  app.setErrorHandler((error, req, reply: FastifyReply) => {
+    const openid = resolveOpenid(req)
     if (error instanceof BusDomainError) {
+      log(`⚠️  [${formatLogTime()}] [业务拦截] ${error.code} (${error.statusCode}): ${error.message} | openid: ${openid} | ${req.method} ${req.url}`)
       return reply.status(error.statusCode).send({
         code: error.code,
         message: error.message,
       })
     }
     if (error instanceof z.ZodError) {
+      const detail = error.issues.map((i) => i.message).join('; ')
+      log(`⚠️  [${formatLogTime()}] [参数校验失败] 400: ${detail} | openid: ${openid} | ${req.method} ${req.url}`)
       return reply.status(400).send({
         code: 'VALIDATION_ERROR',
-        message: error.issues.map((i) => i.message).join('; '),
+        message: detail,
       })
     }
     const errMessage = error instanceof Error ? error.message : 'Internal Server Error'
+    const stack = error instanceof Error ? error.stack : undefined
+    log(`❌ [${formatLogTime()}] [系统异常] 500: ${errMessage} | openid: ${openid} | ${req.method} ${req.url}${stack ? `\n${stack}` : ''}`)
     return reply.status(500).send({
       code: 'INTERNAL_ERROR',
       message: errMessage,
@@ -148,6 +197,7 @@ export function buildApp(options?: BuildAppOptions): {
       destination: body.destination,
       travelDate: body.travel_date,
     })
+    log(`📋 [${formatLogTime()}] [意向登记] 学生: ${body.student_name} (${body.phone}) | ${body.departure_campus} -> ${body.destination} (${body.travel_date})`)
     return { code: 0, data: res }
   })
 
@@ -182,6 +232,8 @@ export function buildApp(options?: BuildAppOptions): {
       dropoffStation: body.dropoff_station,
       passengers: body.passengers,
     })
+    const expireTimeStr = new Date(result.lockedUntilMs).toLocaleTimeString()
+    log(`🔒 [${formatLogTime()}] [原子锁座成功] 订单号: ${result.orderId} | 座位: [${result.seatNumbers.join(', ')}] | 锁定 300 秒至 ${expireTimeStr} (openid: ${openid})`)
     return { code: 0, data: result }
   })
 
@@ -192,6 +244,7 @@ export function buildApp(options?: BuildAppOptions): {
       orderId: body.order_id,
       transactionId: body.transaction_id,
     })
+    log(`💳 [${formatLogTime()}] [支付确认回调] 订单: ${body.order_id} | 流水号: ${body.transaction_id} | 状态: ${result.status} | 幂等: ${result.idempotent}`)
     return { code: 0, data: result }
   })
 
@@ -214,6 +267,9 @@ export function buildApp(options?: BuildAppOptions): {
     const openid = resolveOpenid(req)
     const { id } = req.params as { id: string }
     const res = seatService.applyTieredRefund({ orderId: id, openid })
+    const refundYuan = (res.refundAmountCents / 100).toFixed(2)
+    const feeYuan = (res.refundFeeCents / 100).toFixed(2)
+    log(`💸 [${formatLogTime()}] [阶梯退票成功] 订单: ${id} | 实退: ¥${refundYuan} | 手续费(${res.feePct}%): ¥${feeYuan} | 释放座位: [${res.releasedSeatNumbers.join(', ')}]`)
     return { code: 0, data: res }
   })
 
@@ -237,6 +293,7 @@ export function buildApp(options?: BuildAppOptions): {
       reservedSeatNumbers: body.reserved_seat_numbers,
       refundRules: body.refund_rules,
     })
+    log(`🚌 [${formatLogTime()}] [发布新班次] ID: ${scheduleId} | 线路: ${body.route_name} | 票价: ¥${(body.price_in_cents / 100).toFixed(0)}`)
     return { code: 0, data: { schedule_id: scheduleId } }
   })
 
@@ -250,6 +307,7 @@ export function buildApp(options?: BuildAppOptions): {
       body.seat_number,
       body.reserved,
     )
+    log(`💺 [${formatLogTime()}] [调整预留座] 班次: ${id} | 座位: ${body.seat_number} | 状态: ${body.reserved ? '领队留座(3)' : '开放可选(0)'}`)
     return { code: 0, data: seat }
   })
 
@@ -276,6 +334,7 @@ export function buildApp(options?: BuildAppOptions): {
       checkInCode: body.check_in_code,
       checkedIn: body.checked_in,
     })
+    log(`🎫 [${formatLogTime()}] [领队核验签到] 班次: ${id} | 座位: ${res.seatNumber} (${res.name}) | 状态: ${res.checkedIn ? '✅ 已到' : '↩️ 撤销签到'}`)
     return { code: 0, data: res }
   })
 
@@ -285,6 +344,7 @@ export function buildApp(options?: BuildAppOptions): {
     const { id } = req.params as { id: string }
     const scheduleId = Number.parseInt(id, 10)
     const buffer = await rosterService.exportScheduleRosterExcel(scheduleId)
+    log(`📄 [${formatLogTime()}] [导出检票名册] 班次: ${scheduleId} | 大小: ${buffer.length} bytes`)
     reply
       .header(
         'Content-Type',

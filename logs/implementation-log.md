@@ -71,4 +71,15 @@
   - `npm run typecheck` 零错误；`npm test` 4 个测试套件全部通过（总耗时 `947ms`）。
 - **回退方式**：当前修改位于 `fix/miniprogram-api-contract` 分支，等待用户指令再提交并合入 `main`。
 
+## 2026-10-01T21:45:00+08:00 — 完成服务端直观实时彩色控制台日志与文件自动追加落盘 (`feat/server-logging`)
+- **触发依据**：用户提问“启动后端之后在哪里看日志”，经批准后实现本地开发实时直观控制台日志及 `server.log` 落盘功能。
+- **实现内容**：
+  1. `server/src/app.ts`：在 `BuildAppOptions` 中增加 `enableLogging` 与 `logFilePath`；增加 `onRequest` 与 `onResponse` 生命周期钩子（带有时间戳、请求方式、路径、openid、状态码、响应毫秒耗时），在关键业务节点（锁座、支付回调、阶梯退票、检票核验、名册导出）打印中文业务摘要，并在 `setErrorHandler` 输出清晰的业务拦截与异常堆栈。
+  2. `server/src/index.ts`：启动时启用 `enableLogging: true` 并传入 `server/server.log` 文件落盘路径，启动提示中显示日志文件位置。
+  3. `.gitignore`：增加 `miniprogram/project.private.config.json` 忽略微信开发者工具私有配置。
+  4. `server/src/app.test.ts`：增加第 10 步断言测试验证 `enableLogging: true` 时日志准确生成并记录。
+- **外部验证证据**：
+  - `npm run typecheck` 零错误；`npm test` 4 项测试套件全部通过（耗时 `1281ms`），并验证了临时测试日志文件的生成与内容。
+- **回退方式**：当前分支为 `feat/server-logging`，未执行 `git commit` / `git push`，遵循 `AGENTS.md` 铁律第 8 条暂停等待用户批准。
+
 
