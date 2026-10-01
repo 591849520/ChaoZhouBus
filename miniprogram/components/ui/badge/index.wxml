@@ -1,3 +1,4 @@
 <view class="ui-badge ui-badge--{{variant}}">
-  <text>{{text}}</text>
+  <text wx:if="{{text}}">{{text}}</text>
+  <slot wx:else></slot>
 </view>

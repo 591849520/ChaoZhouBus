@@ -19,7 +19,8 @@ Component({
       if (selectedValue === this.properties.value) {
         return;
       }
-      this.triggerEvent('change', { value: selectedValue });
+      const payload = Object.assign({ value: selectedValue }, this.dataset || {});
+      this.triggerEvent('change', payload);
     },
   },
 });

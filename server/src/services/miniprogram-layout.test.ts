@@ -152,6 +152,33 @@ assert.ok(
   'ui-input must dispatch change event for bind:change listeners'
 );
 
+const cardJsSource = fs.readFileSync(
+  path.join(miniprogramRoot, 'components/ui/card/index.js'),
+  'utf8'
+);
+assert.ok(
+  cardJsSource.includes('subtitle:'),
+  'ui-card must declare subtitle property for card sub-headings'
+);
+
+const badgeWxmlSource = fs.readFileSync(
+  path.join(miniprogramRoot, 'components/ui/badge/index.wxml'),
+  'utf8'
+);
+assert.ok(
+  badgeWxmlSource.includes('<slot'),
+  'ui-badge must support default slot for pill badges like <ui-badge>余 51 座</ui-badge>'
+);
+
+const tabsJsSource = fs.readFileSync(
+  path.join(miniprogramRoot, 'components/ui/tabs/index.js'),
+  'utf8'
+);
+assert.ok(
+  tabsJsSource.includes('this.dataset'),
+  'ui-tabs must pass dataset into change event payload'
+);
+
 // 5. 前后端端到端契约回归测试（模拟小程序各页面真实 Payload 打入 Fastify app.inject）
 async function runContractIntegrationTest() {
   const db = new Database(':memory:');
