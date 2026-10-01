@@ -1,8 +1,8 @@
 <view class="ui-card">
-  <view wx:if="{{title || description || badgeText}}" class="ui-card__header">
+  <view wx:if="{{title || subtitle || description || badgeText}}" class="ui-card__header">
     <view class="ui-card__header-main">
       <view wx:if="{{title}}" class="ui-card__title">{{title}}</view>
-      <view wx:if="{{description}}" class="ui-card__desc">{{description}}</view>
+      <view wx:if="{{subtitle || description}}" class="ui-card__desc">{{subtitle || description}}</view>
     </view>
     <view wx:if="{{badgeText}}" class="ui-card__extra">
       <ui-badge text="{{badgeText}}" variant="{{badgeVariant}}" />

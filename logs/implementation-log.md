@@ -93,4 +93,15 @@
   - `npm run typecheck` 零错误；`npm test` 4 项测试套件全部通过（耗时 `938ms`）。
 - **回退方式**：当前处于 `fix/component-event-dispatch` 分支，遵循 `AGENTS.md` 铁律第 8 条等待用户指令再执行提交与合并。
 
+## 2026-10-01T22:18:00+08:00 — 修复 `<ui-card>` 副标题与 `<ui-badge>` 插槽文字渲染缺陷 (`fix/ui-component-slots-and-props`)
+- **触发依据**：代码审查中发现 `<ui-card>` 缺少 `subtitle` 属性声明导致所有卡片副标题文字空白，以及 `<ui-badge>` 缺少 `<slot>` 导致页面插槽徽章文字未渲染。
+- **修复内容**：
+  1. `miniprogram/components/ui/card/index.js` & `index.wxml`：增加 `subtitle` 属性声明并在模板中渲染 `{{subtitle || description}}`。
+  2. `miniprogram/components/ui/badge/index.wxml`：增加 `<slot wx:else></slot>` 支持默认插槽文字渲染。
+  3. `miniprogram/components/ui/tabs/index.js`：分发 `change` 时自动合并 `this.dataset` 透传参数。
+  4. `server/src/services/miniprogram-layout.test.ts`：增加第 4.2 步静态断言，强制保证 `ui-card` 声明 `subtitle`，`ui-badge` 声明 `<slot`，`ui-tabs` 声明 `this.dataset`。
+- **外部验证证据**：
+  - `npm run typecheck` 零错误；`npm test` 4 项测试套件全部通过（耗时 `1022ms`）。
+- **回退方式**：当前处于 `fix/ui-component-slots-and-props` 分支，遵循 `AGENTS.md` 铁律第 8 条等待用户指令再执行提交与合并。
+
 
