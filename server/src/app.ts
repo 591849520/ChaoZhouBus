@@ -1,9 +1,11 @@
 import fs from 'node:fs'
+import path from 'node:path'
 import cors from '@fastify/cors'
 import Database from 'better-sqlite3'
 import Fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { AppConfig, appConfig } from './config/env.js'
+import { createDatabaseBackup } from './db/backup.js'
 import { initSchema } from './db/schema.js'
 import { RosterAndAdminService } from './services/roster-export.js'
 import { SeatLockService } from './services/seat-lock.js'
@@ -138,6 +140,7 @@ export function buildApp(options?: BuildAppOptions): {
   const logFilePath = options?.logFilePath
   const log = createLogger(enableLogging, logFilePath)
   const reqStartTimes = new WeakMap<FastifyRequest, number>()
+  const serviceStartTime = Date.now()
 
   const app = Fastify({ logger: false })
   void app.register(cors, { origin: true })
@@ -183,6 +186,18 @@ export function buildApp(options?: BuildAppOptions): {
       code: 'INTERNAL_ERROR',
       message: errMessage,
     })
+  })
+
+  // 0. GET /health (服务健康探活与指标端点)
+  app.get('/health', async () => {
+    const ping = db.prepare('SELECT 1 AS alive').get() as { alive: number } | undefined
+    return {
+      status: 'ok',
+      version: '0.1.0',
+      uptime_seconds: Math.floor((Date.now() - serviceStartTime) / 1000),
+      db_status: ping?.alive === 1 ? 'connected' : 'disconnected',
+      server_time_ms: Date.now(),
+    }
   })
 
   // 1. POST /api/v1/intentions (学生提交返乡乘车意向)
@@ -355,6 +370,15 @@ export function buildApp(options?: BuildAppOptions): {
         `attachment; filename="chaozhou_bus_schedule_${scheduleId}_roster.xlsx"`,
       )
     return reply.send(buffer)
+  })
+
+  // 14. POST /api/v1/admin/backup (管理端手动触发 SQLite 在线热备份)
+  app.post('/api/v1/admin/backup', async (req) => {
+    assertAdminAuth(req, cfg)
+    const backupDir = path.resolve(process.cwd(), 'data/backups')
+    const res = await createDatabaseBackup(db, backupDir)
+    log(`💾 [${formatLogTime()}] [手动热备份成功] 文件: ${res.backupFile} | 大小: ${res.backupSize} bytes | 清理旧备份: ${res.cleanedOldBackupsCount} 份`)
+    return { code: 0, data: res }
   })
 
   return { app, db, seatService, rosterService }

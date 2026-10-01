@@ -20,7 +20,10 @@ function parsePositiveInt(val: string | undefined, fallback: number): number {
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
-  const lockTtlSeconds = parsePositiveInt(env.LOCK_TTL_SECONDS, 300)
+  const lockTtlSeconds = parsePositiveInt(
+    env.LOCK_TTL_SECONDS,
+    env.LOCK_TTL_MS ? Math.floor(parsePositiveInt(env.LOCK_TTL_MS, 300000) / 1000) : 300,
+  )
   const reservedRaw = env.DEFAULT_RESERVED_SEATS ?? '01,02'
   const defaultReservedSeats = reservedRaw
     .split(',')
